@@ -144,8 +144,8 @@ export default function Contact() {
                 {[
                   {
                     icon: Phone,
-                    text: "+62 857-0226-2321",
-                    href: "https://wa.me/+6285702262321",
+                    text: "+62 881-4153-292",
+                    href: "https://wa.me/+628814153292",
                     description: "Senin-Jumat, 09.00-19.00",
                   },
                   {

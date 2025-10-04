@@ -17,8 +17,9 @@ export async function generateToken(
     clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT,
   })
 
-  // ✅ Format order_id mengandung UID agar bisa dilacak saat notifikasi
-  const composedOrderId = `${uid}-${orderId}`
+  // ✅ Buat order_id aman dan tidak melebihi batas 50 karakter
+  const shortUid = uid.slice(0, 8) // ambil 8 karakter pertama dari UID agar tetap unik
+  const composedOrderId = `${shortUid}-${orderId}`
 
   const parameter = {
     transaction_details: {
@@ -30,12 +31,12 @@ export async function generateToken(
       duration: 3,
       unit: 'hours',
     },
-    enabled_payments: ['bca_va'],
+    enabled_payments: ['bca_va'], // bisa tambah metode lain nanti (gopay, qris, dsb)
     customer_details: {
       id: uid, // optional
     },
 
-    // ✅ Tambahkan metadata opsional (kalau mau cara lain ambil UID)
+    // ✅ Metadata tambahan (opsional, tapi tetap bisa bantu saat debugging)
     metadata: {
       extra_info: {
         user_id: uid,

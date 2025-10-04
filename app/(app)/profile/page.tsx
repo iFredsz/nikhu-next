@@ -1,0 +1,8 @@
+export default function Page() {
+  return (
+    <>
+      <h4>Profile</h4>
+      <p className='mt-8'>Haha kamu kena prenk.. ^^</p>
+    </>
+  )
+}

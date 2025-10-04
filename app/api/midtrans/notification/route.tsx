@@ -1,50 +1,55 @@
-const midtransClient = require('midtrans-client')
-
-import { UpdateOrder } from '@/lib/actions/firestore/update-order'
 import { NextResponse } from 'next/server'
+import midtransClient from 'midtrans-client'
+import { UpdateOrder } from '@/lib/actions/firestore/update-order'
 
 export async function POST(req: Request) {
-  const body = await req.json()
-  const notificationJson = body
-
-  let apiClient = new midtransClient.Snap({
-    isProduction: false,
-    serverKey: process.env.MIDTRANS_SERVER,
-    clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT,
-  })
-
   try {
-    const statusResponse = await apiClient.transaction.notification(notificationJson)
-    let orderId = statusResponse.order_id
-    let transactionStatus = statusResponse.transaction_status
-    let fraudStatus = statusResponse.fraud_status
-    let uid = statusResponse.metadata.extra_info.user_id
+    // Ambil raw body dari Midtrans (lebih aman untuk notification)
+    const body = await req.json().catch(() => null)
+    if (!body) {
+      return NextResponse.json({ success: false, message: 'Invalid JSON body' }, { status: 400 })
+    }
 
-    console.log(
-      `Transaction notification received. Order ID: ${orderId}. Transaction status: ${transactionStatus}. Fraud status: ${fraudStatus}`,
-    )
+    const coreApi = new midtransClient.CoreApi({
+      isProduction: false,
+      serverKey: process.env.MIDTRANS_SERVER!,
+      clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT!,
+    })
 
-    // Sample transactionStatus handling logic
-    if (transactionStatus == 'settlement') {
-      // TODO set transaction status on your database to 'success'
-      await UpdateOrder(uid, orderId, { payment_status: 'success' })
-      return NextResponse.json({ success: true }, { status: 200 })
-    } else if (transactionStatus == 'deny') {
-      // TODO you can ignore 'deny'
-      return NextResponse.json({ success: true }, { status: 200 })
-    } else if (transactionStatus == 'cancel' || transactionStatus == 'expire') {
-      // TODO set transaction status on your database to 'failure'
-      await UpdateOrder(uid, orderId, { payment_status: 'failure' })
-      return NextResponse.json({ success: true }, { status: 200 })
-    } else if (transactionStatus == 'pending') {
-      // TODO set transaction status on your database to 'pending' / waiting payment
-      await UpdateOrder(uid, orderId, { payment_status: 'pending' })
-      return NextResponse.json({ success: true }, { status: 200 })
+    let statusResponse
+    try {
+      statusResponse = await coreApi.transaction.notification(body)
+    } catch (err: any) {
+      console.error('Midtrans API Error:', err.message || err)
+      return NextResponse.json({ success: false, message: 'Midtrans API Error' }, { status: 400 })
+    }
+
+    console.log('Notif dari Midtrans:', JSON.stringify(statusResponse, null, 2))
+
+    const orderId = statusResponse?.order_id
+    const transactionStatus = statusResponse?.transaction_status
+    const fraudStatus = statusResponse?.fraud_status
+
+    if (!orderId || !transactionStatus) {
+      return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 })
+    }
+
+    // Format UID-ORDERID
+    const [uid, ...rest] = orderId.split('-')
+    const pureOrderId = rest.join('-')
+
+    // Update Firestore sesuai status
+    if (transactionStatus === 'settlement') {
+      await UpdateOrder(uid, pureOrderId, { payment_status: 'success' })
+    } else if (transactionStatus === 'pending') {
+      await UpdateOrder(uid, pureOrderId, { payment_status: 'pending' })
+    } else if (['cancel', 'expire', 'deny'].includes(transactionStatus)) {
+      await UpdateOrder(uid, pureOrderId, { payment_status: 'failure' })
     }
 
     return NextResponse.json({ success: true }, { status: 200 })
-  } catch (error) {
-    console.log(error)
-    return NextResponse.json({ success: false }, { status: 500 })
+  } catch (error: any) {
+    console.error('Notif error:', error)
+    return NextResponse.json({ success: false, message: String(error) }, { status: 500 })
   }
 }

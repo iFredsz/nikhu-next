@@ -1,7 +1,10 @@
 {
   "compilerOptions": {
+    /* 🌐 Target environment */
     "target": "es5",
     "lib": ["dom", "dom.iterable", "esnext"],
+
+    /* ⚙️ Compilation behavior */
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -13,15 +16,34 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+
+    /* 💡 Next.js plugin */
     "plugins": [
       {
         "name": "next"
       }
     ],
+
+    /* 🗂️ Path alias dan type root */
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./*"]
-    }
+    },
+    "typeRoots": [
+      "./types",                // 👈 tempat deklarasi custom types kamu
+      "./node_modules/@types"   // 👈 default type definitions dari npm
+    ]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+
+  /* 📦 File yang di-include ke dalam proyek */
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "types/**/*.d.ts"           // 👈 pastikan folder custom types terikut
+  ],
+
+  /* 🚫 Folder yang di-skip */
   "exclude": ["node_modules"]
 }

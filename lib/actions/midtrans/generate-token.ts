@@ -1,4 +1,3 @@
-
 const midtransClient: any = require('midtrans-client')
 import { Midtrans_Checkout_Data } from './generate-checkout-data'
 
@@ -18,9 +17,12 @@ export async function generateToken(
     clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT,
   })
 
+  // ✅ Format order_id mengandung UID agar bisa dilacak saat notifikasi
+  const composedOrderId = `${uid}-${orderId}`
+
   const parameter = {
     transaction_details: {
-      order_id: orderId,
+      order_id: composedOrderId,
       gross_amount: checkoutData.gross_amount,
     },
     item_details: checkoutData.items,
@@ -30,7 +32,14 @@ export async function generateToken(
     },
     enabled_payments: ['bca_va'],
     customer_details: {
-      id: uid, // bisa tambahkan email, name, phone jika ada
+      id: uid, // optional
+    },
+
+    // ✅ Tambahkan metadata opsional (kalau mau cara lain ambil UID)
+    metadata: {
+      extra_info: {
+        user_id: uid,
+      },
     },
   }
 

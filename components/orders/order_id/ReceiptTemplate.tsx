@@ -178,30 +178,40 @@ export default function ReceiptTemplate({ orderData, orderId }: Props) {
                   ({idrFormatter(baseProductPrice)} × {peopleCount} × {sessionCount})
                 </div>
 
-                {b.addons && Array.isArray(b.addons) && b.addons.map((addon: any, i: number) => {
-                  if (addon.type === 'fixed' && (addon.qty as number) > 0) {
-                    const addonSubtotal = addon.price * peopleCount * sessionCount
-                    return (
-                      <div key={i} style={{ padding: '0 4px', marginBottom: '2px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span>{addon.name}:</span>
-                          <span>{idrFormatter(addonSubtotal)}</span>
-                        </div>
-                        <div style={{ fontSize: '9px', textAlign: 'right' }}>
-                          ({idrFormatter(addon.price)} × {peopleCount} × {sessionCount})
-                        </div>
-                      </div>
-                    )
-                  } else if (addon.type === 'per_item' && addon.selectedSessions) {
-                    return Object.entries(addon.selectedSessions).filter(([_, qty]) => (qty as number) > 0).map(([session, qty]) => (
-                      <div key={session} style={{ display: 'flex', justifyContent: 'space-between', padding: '0 4px', marginBottom: '2px' }}>
-                        <span>{addon.name}({session}):</span>
-                        <span>{idrFormatter(addon.price * (qty as number))}</span>
-                      </div>
-                    ))
-                  }
-                  return null
-                })}
+               {b.addons && Array.isArray(b.addons) && b.addons.map((addon: any, i: number) => {
+  if (addon.type === 'fixed' && (addon.qty as number) > 0) {
+    const addonSubtotal = addon.price * peopleCount * sessionCount
+    return (
+      <div key={i} style={{ padding: '0 4px', marginBottom: '2px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>{addon.name}:</span>
+          <span>{idrFormatter(addonSubtotal)}</span>
+        </div>
+        <div style={{ fontSize: '9px', textAlign: 'right' }}>
+          ({idrFormatter(addon.price)} × {peopleCount} × {sessionCount})
+        </div>
+      </div>
+    )
+  } else if (addon.type === 'per_item' && addon.selectedSessions) {
+    return Object.entries(addon.selectedSessions)
+      .filter(([_, qty]) => (qty as number) > 0)
+      .map(([session, qty]) => {
+        const addonSubtotal = addon.price * (qty as number)
+        return (
+          <div key={`${i}-${session}`} style={{ padding: '0 4px', marginBottom: '2px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>{addon.name} ({session}):</span>
+              <span>{idrFormatter(addonSubtotal)}</span>
+            </div>
+            <div style={{ fontSize: '9px', textAlign: 'right' }}>
+              ({idrFormatter(addon.price)} × {qty as number})
+            </div>
+          </div>
+        )
+      })
+  }
+  return null
+})}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 4px', borderTop: '1px dashed black', marginTop: '8px', paddingTop: '8px' }}>
                   <span>Subtotal:</span>

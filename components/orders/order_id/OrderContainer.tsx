@@ -10,10 +10,8 @@ import MidtransPayment from './MidtransPayment'
 import OrderSuccessPlaceholder from './OrderSuccessPlaceholder'
 import LoadingText from '@/components/LoadingText'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
-import OrderItem from './OrderItem'
-import DownloadReceipt from './DownloadReceipt' // Import komponen baru
-import { useEffect, useState } from 'react'
+import DownloadReceipt from './DownloadReceipt'
+import { useEffect, useState, useCallback } from 'react'
 
 type Props = {
   order_id: string
@@ -37,12 +35,14 @@ type OrderItemType = {
 }
 
 type OrderData = {
-  bookingDetails: any[]
-  items: OrderItemType[]
+  bookingDetails?: any[]
+  items?: OrderItemType[]
   payment_status: string
   total_quantity: number
   token?: string
   date: any
+  gross_amount?: number
+  order_id?: string
 }
 
 export default function OrderContainer({ order_id, uid }: Props) {
@@ -50,36 +50,53 @@ export default function OrderContainer({ order_id, uid }: Props) {
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['order', { order_id, uid }],
-    queryFn: async () => await getOrder(uid, order_id),
+    queryFn: async () => {
+      console.log('=== FETCHING ORDER ===')
+      console.log('Order ID:', order_id)
+      console.log('User ID:', uid)
+      
+      const order = await getOrder(uid, order_id)
+      console.log('Order data received:', order)
+      
+      return order
+    },
   })
 
   const orderData = data as OrderData | undefined
 
-  useEffect(() => {
-    if (orderData?.items) {
-      const fetchProducts = async () => {
-        const products: { [key: string]: ProductData } = {}
+  // PERBAIKAN: Pisahkan fungsi fetchProducts
+  const fetchProducts = useCallback(async (bookingDetails: any[]) => {
+    console.log('Fetching products for booking details...')
+    
+    const products: { [key: string]: ProductData } = {}
 
-        for (const item of orderData.items) {
-          try {
-            const product: Product | null = await getProduct(item.slug || item.id)
-            if (product) {
-              products[item.name] = {
-                price: product.price,
-                name: product.name,
-              }
-            }
-          } catch (error) {
-            console.error(`Error fetching product ${item.name}:`, error)
+    for (const item of bookingDetails) {
+      try {
+        const product: Product | null = await getProduct(item.slug || item.id)
+        if (product) {
+          products[item.name] = {
+            price: product.price,
+            name: product.name,
           }
         }
-
-        setProductsData(products)
+      } catch (error) {
+        console.error(`Error fetching product ${item.name}:`, error)
       }
-
-      fetchProducts()
     }
-  }, [orderData?.items])
+
+    console.log('Products data:', products)
+    setProductsData(products)
+  }, [])
+
+  useEffect(() => {
+    console.log('=== ORDER DATA UPDATED ===')
+    console.log('Order data:', orderData)
+    
+    // PERBAIKAN: Tambahkan check untuk bookingDetails
+    if (orderData?.bookingDetails && orderData.bookingDetails.length > 0) {
+      fetchProducts(orderData.bookingDetails)
+    }
+  }, [orderData, fetchProducts]) // PERBAIKAN: Tambahkan dependency yang diperlukan
 
   if (isLoading) {
     return (
@@ -94,16 +111,44 @@ export default function OrderContainer({ order_id, uid }: Props) {
   }
 
   if (!orderData) {
+    console.log('No order data found')
     return <OrderEmptyPlaceholder />
   }
 
-  const { bookingDetails, items, payment_status, total_quantity, token, date } = orderData
+  console.log('=== RENDERING ORDER CONTAINER ===')
+  console.log('Order data for rendering:', orderData)
+
+  const { 
+    bookingDetails = [], 
+    items = [], 
+    payment_status, 
+    total_quantity, 
+    token, 
+    date, 
+    gross_amount 
+  } = orderData
+  
   const formattedDate = firestoreDateFormatter(date)
 
-  const totalOrderNumber = items.reduce((acc: number, item: OrderItemType) => {
-    return acc + item.price * item.quantity
-  }, 0)
+  // PERBAIKAN UTAMA: Safety check untuk reduce dengan fallback
+  console.log('Items array:', items)
+  console.log('Items is array?', Array.isArray(items))
+  
+  const totalOrderNumber = Array.isArray(items) 
+    ? items.reduce((acc: number, item: OrderItemType) => {
+        const itemPrice = item.price || 0
+        const itemQuantity = item.quantity || 1
+        return acc + itemPrice * itemQuantity
+      }, 0)
+    : gross_amount || 0
+
   const totalOrder = idrFormatter(totalOrderNumber)
+
+  // PERBAIKAN: Gunakan bookingDetails dengan safety check
+  const displayItems = (bookingDetails && bookingDetails.length > 0) ? bookingDetails : items
+
+  console.log('Display items:', displayItems)
+  console.log('Total order number:', totalOrderNumber)
 
   return (
     <>
@@ -117,31 +162,35 @@ export default function OrderContainer({ order_id, uid }: Props) {
       )}
 
       {/* Booking Details */}
-      {bookingDetails && bookingDetails.length > 0 ? (
-        bookingDetails.map((b: any, idx: number) => {
+      {displayItems && displayItems.length > 0 ? (
+        displayItems.map((b: any, idx: number) => {
+          console.log('Rendering booking item:', b)
+          
           const productData = productsData[b.name]
-          const baseProductPrice = productData?.price || 0
+          const baseProductPrice = productData?.price || b.price || 0
 
           const sessionCount = b.times?.length || 1
           const peopleCount = b.people || 1
           const productTotal = baseProductPrice * peopleCount * sessionCount
 
           const addonsTotal =
-            b.addons?.reduce((acc: number, addon: any) => {
-              if (addon.type === 'fixed' && (addon.qty as number) > 0) {
-                return acc + addon.price * peopleCount * sessionCount
-              } else if (addon.type === 'per_item' && addon.selectedSessions) {
-                return (
-                  acc +
-                  Object.values(addon.selectedSessions).reduce(
-                    (sessionAcc: number, qty) =>
-                      sessionAcc + addon.price * (qty as number),
-                    0
-                  )
-                )
-              }
-              return acc
-            }, 0) || 0
+            (b.addons && Array.isArray(b.addons)) 
+              ? b.addons.reduce((acc: number, addon: any) => {
+                  if (addon.type === 'fixed' && (addon.qty as number) > 0) {
+                    return acc + addon.price * peopleCount * sessionCount
+                  } else if (addon.type === 'per_item' && addon.selectedSessions) {
+                    return (
+                      acc +
+                      Object.values(addon.selectedSessions).reduce(
+                        (sessionAcc: number, qty) =>
+                          sessionAcc + addon.price * (qty as number),
+                        0
+                      )
+                    )
+                  }
+                  return acc
+                }, 0)
+              : 0
 
           const subtotal = productTotal + addonsTotal
           const finalTotal = b.total || subtotal - (b.voucherDiscount || 0)
@@ -169,7 +218,6 @@ export default function OrderContainer({ order_id, uid }: Props) {
                       {b.people && <p>Jumlah orang: {b.people}</p>}
                     </div>
                   </div>
-                  
                 </div>
               </CardHeader>
               <CardContent className="p-4 pt-0">
@@ -187,7 +235,7 @@ export default function OrderContainer({ order_id, uid }: Props) {
                     </li>
 
                     {/* Addons */}
-                    {b.addons &&
+                    {b.addons && Array.isArray(b.addons) &&
                       b.addons
                         .map((addon: any, index: number) => {
                           if (addon.type === 'fixed' && (addon.qty as number) > 0) {
@@ -249,6 +297,16 @@ export default function OrderContainer({ order_id, uid }: Props) {
       <div className="mb-2 flex justify-between">
         <p>Payment Status</p>
         <OrderStatus status={payment_status} />
+      </div>
+
+      <div className="mb-2 flex justify-between">
+        <p>Total Amount</p>
+        <p className="font-bold">{totalOrder}</p>
+      </div>
+
+      <div className="mb-2 flex justify-between">
+        <p>Order Date</p>
+        <p>{formattedDate}</p>
       </div>
 
       {payment_status === 'success' && <OrderSuccessPlaceholder />}

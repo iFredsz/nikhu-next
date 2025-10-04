@@ -22,9 +22,76 @@ export function firstLetterUppercase(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
-export function firestoreDateFormatter(firestoreTimestamp: { seconds: number, nanoseconds: number }): string {
-  const date = new Date(firestoreTimestamp.seconds * 1000); // Convert seconds to milliseconds
-  const formattedDate = `${date.getDate()} ${getMonthName(date.getMonth())} ${date.getFullYear()}, ${formatTime(date.getHours())}:${formatTime(date.getMinutes())}`;
+export function firestoreDateFormatter(dateInput: any): string {
+  console.log('=== firestoreDateFormatter INPUT ===')
+  console.log('Input:', dateInput)
+  console.log('Type:', typeof dateInput)
+  
+  if (!dateInput) {
+    console.log('No date input')
+    return 'No date'
+  }
+  
+  let date: Date;
+
+  try {
+    // Handle Firestore serverTimestamp object
+    if (dateInput && typeof dateInput === 'object' && dateInput._methodName === 'serverTimestamp') {
+      console.log('Detected serverTimestamp')
+      return 'Processing...'
+    }
+    
+    // Handle Firestore Timestamp object ({ seconds, nanoseconds })
+    if (dateInput && typeof dateInput === 'object' && 'seconds' in dateInput && 'nanoseconds' in dateInput) {
+      console.log('Detected Firestore Timestamp')
+      date = new Date(dateInput.seconds * 1000);
+    }
+    // Handle JavaScript Date object
+    else if (dateInput instanceof Date) {
+      console.log('Detected Date object')
+      date = dateInput;
+    }
+    // Handle string dates (ISO format)
+    else if (typeof dateInput === 'string') {
+      console.log('Detected string date')
+      date = new Date(dateInput);
+      
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        console.log('Invalid string date')
+        return 'Invalid date';
+      }
+    }
+    // Handle numeric timestamp
+    else if (typeof dateInput === 'number') {
+      console.log('Detected numeric timestamp')
+      date = new Date(dateInput);
+    }
+    // Handle other object types (like Firestore Timestamp with toDate method)
+    else if (dateInput && typeof dateInput.toDate === 'function') {
+      console.log('Detected Firestore Timestamp with toDate method')
+      date = dateInput.toDate();
+    }
+    else {
+      console.log('Unknown date format')
+      return 'Invalid date';
+    }
+
+    // Final validation
+    if (!date || isNaN(date.getTime())) {
+      console.log('Invalid date after processing')
+      return 'Invalid date';
+    }
+
+    const formattedDate = `${date.getDate()} ${getMonthName(date.getMonth())} ${date.getFullYear()}, ${formatTime(date.getHours())}:${formatTime(date.getMinutes())}`;
+    
+    console.log('Formatted date:', formattedDate)
+    return formattedDate;
+
+  } catch (error) {
+    console.error('Error formatting date:', error)
+    return 'Invalid date'
+  }
 
   function getMonthName(monthIndex: number): string {
     const months = [
@@ -37,8 +104,6 @@ export function firestoreDateFormatter(firestoreTimestamp: { seconds: number, na
   function formatTime(time: number): string {
     return time < 10 ? `0${time}` : `${time}`;
   }
-
-  return formattedDate;
 }
 
 export function extractProductsId(cartItemsStore: CartItemsStore[]) {

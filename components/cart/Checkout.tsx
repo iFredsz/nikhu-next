@@ -1,5 +1,3 @@
-'use client'
-
 import useCartStore from '@/store/cart-store'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
@@ -28,67 +26,30 @@ export default function Checkout(props: Props) {
       return
     }
 
-    if (cartItemsStore.length === 0) {
-      toast.error('Cart is empty!')
-      return
-    }
-
     handleIsFetching(true)
-
     try {
-      const response = await ky
-        .post('/api/midtrans/create-order', { 
-          json: { items: cartItemsStore },
-          timeout: 30000,
-          throwHttpErrors: false
-        })
+      const newOrder: { orderId: string } = await ky
+        .post('/api/midtrans/create-order', { json: cartItemsStore })
         .json()
 
-      // Type guard untuk response
-      if (typeof response === 'object' && response !== null) {
-        const orderResponse = response as { 
-          orderId?: string; 
-          token?: string; 
-          redirect_url?: string;
-          error?: string;
-        }
-
-        if (orderResponse.error) {
-          throw new Error(orderResponse.error)
-        }
-
-        if (!orderResponse.orderId) {
-          throw new Error('No order ID received from server')
-        }
-
-        handleIsFetching(false)
-        handleSheetClose()
-        clearCart()
-
-        // **PERUBAHAN UTAMA: Selalu redirect ke halaman order**
-        toast.success('Order created successfully!')
-        router.push(`/profile/orders/${orderResponse.orderId}`)
-        
-        return
-      }
-
-      throw new Error('Unexpected response format from server')
-
-    } catch (error: any) {
+      // executed if order is successfully created
       handleIsFetching(false)
-      console.error('Checkout error:', error)
-      
-      if (error.name === 'TimeoutError') {
-        toast.error('Request timeout. Please try again.')
-      } else {
-        toast.error(error.message || 'Payment failed. Please try again.')
-      }
+      handleSheetClose()
+      clearCart()
+      toast.success('Order has been created!')
+      router.push(`/profile/orders/${newOrder.orderId}`)
+    } catch (error) {
+      handleIsFetching(false)
+      console.log(error)
+      toast.error('Something went wrong when placing the order...')
     }
   }
 
   return (
-    <Button className='w-full' disabled={isFetching} onClick={handleCheckout}>
-      {isFetching ? <LoadingText /> : 'Checkout'}
-    </Button>
+    <>
+      <Button className='w-full' disabled={isFetching} onClick={handleCheckout}>
+        {isFetching ? <LoadingText /> : 'Checkout'}
+      </Button>
+    </>
   )
 }

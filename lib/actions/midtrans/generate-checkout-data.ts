@@ -1,61 +1,68 @@
 import { CartItemsStore } from '@/store/cart-store'
-import { ApiCart } from '@/app/api/cart/route'
 
 export type Midtrans_Checkout_Data = {
   items: any[]
   gross_amount: number
   total_quantity: number
   orderId?: string
+  originalCartItems: CartItemsStore[]
 }
 
-// generate checkout data from zustand cart items store
-export async function generateCheckoutData(cartItemsStore: CartItemsStore[], orderId: string) {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/cart`, {
-    body: JSON.stringify(cartItemsStore),
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    }
-  })
-
-  const products: ApiCart = await response.json()
-
+export async function generateCheckoutData(
+  cartItemsStore: CartItemsStore[],
+  orderId?: string
+): Promise<Midtrans_Checkout_Data> {
   const items: any[] = []
-  let totalFromItems = 0
+  const originalCartItems: CartItemsStore[] = []
+  let gross_amount = 0
+  let total_quantity = 0
 
-  cartItemsStore.forEach(ci => {
-    // Gunakan total produk utama, sudah termasuk addons & voucher
-    const mainTotal = ci.total || (ci.price * ci.quantity)
-    
-    items.push({
-      id: ci.id,
-      price: mainTotal,
-      quantity: 1, // setiap item sudah mewakili total
-      name: ci.name,
-      url: `${process.env.NEXT_PUBLIC_BASE_URL}/products/${ci.slug}`,
-      merchant_name: 'Nikhu Studio',
-      category: 'Package',
-      brand: 'Nikhu Studio',
-       customer_name: ci.customerName,
-      customer_phone: ci.customerWa,
+  cartItemsStore.forEach((cartItem) => {
+    // Simpan data original (bersihkan undefined)
+    originalCartItems.push({
+      id: cartItem.id,
+      name: cartItem.name || 'Unknown Product',
+      price: cartItem.price || 0,
+      quantity: cartItem.quantity || 1,
+      total: cartItem.total || 0,
+      date: cartItem.date || '',
+      times: cartItem.times || [],
+      people: cartItem.people || 1,
+      addons: cartItem.addons || [],
+      voucherDiscount: cartItem.voucherDiscount || 0,
+      thumbnail: cartItem.thumbnail || '',
+      slug: cartItem.slug || '',
+      customerName: cartItem.customerName || '',
+      customerWa: cartItem.customerWa || '',
     })
 
-    totalFromItems += mainTotal
+    // Format untuk Midtrans
+    const itemTotal = cartItem.total || 0
+    
+    items.push({
+      id: cartItem.id,
+      name: cartItem.name || 'Unknown Product',
+      price: itemTotal,
+      quantity: 1,
+      category: 'Booking',
+      merchant_name: 'Your Business Name'
+    })
+
+    gross_amount += itemTotal
+    total_quantity += 1
   })
 
-  // gross_amount = total semua item utama
-  const gross_amount = totalFromItems
-
-  // total_quantity = jumlah produk utama
-  const total_quantity = cartItemsStore.reduce((sum, ci) => sum + ci.quantity, 0)
-
-  // orderId max 50 char
-  const shortOrderId = orderId.length > 50 ? orderId.slice(0, 50) : orderId
-
-  return {
+  // Hanya return orderId jika ada
+  const result: Midtrans_Checkout_Data = {
     items,
     gross_amount,
     total_quantity,
-    orderId: shortOrderId,
+    originalCartItems,
   }
+
+  if (orderId) {
+    result.orderId = orderId
+  }
+
+  return result
 }

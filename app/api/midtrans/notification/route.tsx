@@ -4,24 +4,32 @@ import { UpdateOrder } from '@/lib/actions/firestore/update-order'
 
 export async function POST(req: Request) {
   try {
-    // Ambil raw body dari Midtrans (lebih aman untuk notification)
+    // ✅ Parse body dari Midtrans
     const body = await req.json().catch(() => null)
     if (!body) {
-      return NextResponse.json({ success: false, message: 'Invalid JSON body' }, { status: 400 })
+      return NextResponse.json(
+        { success: false, message: 'Invalid JSON body' },
+        { status: 400 }
+      )
     }
 
+    // ✅ Setup Core API
     const coreApi = new midtransClient.CoreApi({
       isProduction: false,
       serverKey: process.env.MIDTRANS_SERVER!,
       clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT!,
     })
 
+    // ✅ Ambil status transaksi
     let statusResponse
     try {
       statusResponse = await coreApi.transaction.notification(body)
     } catch (err: any) {
       console.error('Midtrans API Error:', err.message || err)
-      return NextResponse.json({ success: false, message: 'Midtrans API Error' }, { status: 400 })
+      return NextResponse.json(
+        { success: false, message: 'Midtrans API Error' },
+        { status: 400 }
+      )
     }
 
     console.log('Notif dari Midtrans:', JSON.stringify(statusResponse, null, 2))
@@ -31,25 +39,40 @@ export async function POST(req: Request) {
     const fraudStatus = statusResponse?.fraud_status
 
     if (!orderId || !transactionStatus) {
-      return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 })
+      return NextResponse.json(
+        { success: false, message: 'Missing required fields' },
+        { status: 400 }
+      )
     }
 
-    // Format UID-ORDERID
-    const [uid, ...rest] = orderId.split('-')
-    const pureOrderId = rest.join('-')
+    /**
+     * ✅ Format baru: order_id hanya memiliki bentuk UID-ORDERID
+     * Contoh: 5xCfgl-ORD123
+     */
+    const splitIndex = orderId.indexOf('-')
+    const uid = orderId.slice(0, splitIndex)
+    const pureOrderId = orderId.slice(splitIndex + 1)
 
-    // Update Firestore sesuai status
+    // ✅ Log supaya bisa cek path firestore
+    console.log(`Updating Firestore -> users/${uid}/orders/${pureOrderId}`)
+
+    // ✅ Update Firestore sesuai status transaksi
     if (transactionStatus === 'settlement') {
       await UpdateOrder(uid, pureOrderId, { payment_status: 'success' })
     } else if (transactionStatus === 'pending') {
       await UpdateOrder(uid, pureOrderId, { payment_status: 'pending' })
     } else if (['cancel', 'expire', 'deny'].includes(transactionStatus)) {
       await UpdateOrder(uid, pureOrderId, { payment_status: 'failure' })
+    } else {
+      console.warn('Unknown transaction status:', transactionStatus)
     }
 
     return NextResponse.json({ success: true }, { status: 200 })
   } catch (error: any) {
     console.error('Notif error:', error)
-    return NextResponse.json({ success: false, message: String(error) }, { status: 500 })
+    return NextResponse.json(
+      { success: false, message: String(error) },
+      { status: 500 }
+    )
   }
 }

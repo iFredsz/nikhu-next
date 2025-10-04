@@ -42,7 +42,7 @@ export function firestoreDateFormatter(firestoreTimestamp: { seconds: number, na
 }
 
 export function extractProductsId(cartItemsStore: CartItemsStore[]) {
-  const productId: number[] = []
+  const productId: string[] = []
 
   cartItemsStore.forEach((item) => {
     productId.push(item.id)

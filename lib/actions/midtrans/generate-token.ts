@@ -17,9 +17,12 @@ export async function generateToken(
     clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT,
   })
 
-  // ✅ Buat order_id aman dan tidak melebihi batas 50 karakter
-  const shortUid = uid.slice(0, 8) // ambil 8 karakter pertama dari UID agar tetap unik
-  const composedOrderId = `${shortUid}-${orderId}`
+  // ✅ Maksimal panjang order_id adalah 50 karakter
+  // gabungkan UID pendek + orderId + random 4 huruf agar tetap unik
+  const shortUid = uid.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6) // 6 huruf aman
+  const shortOrder = orderId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 30) // 30 huruf
+  const randomSuffix = Math.random().toString(36).substring(2, 6) // 4 huruf random
+  const composedOrderId = `${shortUid}-${shortOrder}-${randomSuffix}`.slice(0, 49)
 
   const parameter = {
     transaction_details: {
@@ -31,20 +34,15 @@ export async function generateToken(
       duration: 3,
       unit: 'hours',
     },
-    enabled_payments: ['bca_va'], // bisa tambah metode lain nanti (gopay, qris, dsb)
+    enabled_payments: ['bca_va'],
     customer_details: {
-      id: uid, // optional
+      id: uid,
     },
-
-    // ✅ Metadata tambahan (opsional, tapi tetap bisa bantu saat debugging)
     metadata: {
-      extra_info: {
-        user_id: uid,
-      },
+      extra_info: { user_id: uid },
     },
   }
 
-  // createTransaction mengembalikan object { token, redirect_url }
   const tokenResponse = await snap.createTransaction(parameter)
 
   return {

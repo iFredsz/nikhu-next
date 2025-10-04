@@ -21,7 +21,7 @@ export default function MidtransPayment(props: Props) {
       onSuccess: function (result: any) {
         setIsOpen(false)
         alert('Payment success!')
-        router.push(`/transaction-status?order_id=${order_id}&status_code=200&transaction_status=success`)
+        router.push(`/transaction-status?order_id=${order_id}&status_code=200&transaction_status=settlement`)
       },
       onPending: function (result: any) {
         setIsOpen(false)

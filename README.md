@@ -1,6 +1,6 @@
 # NextShop
 
-A simple eshop with Next JS, Zustand, Shadcn UI, Firebase (Auth & Firestore), and Midtrans Payment Gateway
+A simple booking with Next JS, Zustand, Shadcn UI, Firebase (Auth & Firestore), and Midtrans Payment Gateway
 
 
 ## Tech Stack
@@ -30,7 +30,7 @@ A simple eshop with Next JS, Zustand, Shadcn UI, Firebase (Auth & Firestore), an
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/pandagenduts/next-shop
+git clone https://github.com/iFredsz/nikhu-next
 ```
 
 ### 2. Install dependencies

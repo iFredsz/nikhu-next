@@ -3,7 +3,6 @@ export default function OrderSuccessPlaceholder() {
     <>
       <p className='mt-8 text-center'>
         Your order has been received. <br />
-        Thank you for trying out my portfolio project!
       </p>
 
       <p className='mt-8 text-center font-semibold'>

@@ -36,7 +36,6 @@ export async function POST(req: Request) {
 
     const orderId = statusResponse?.order_id
     const transactionStatus = statusResponse?.transaction_status
-    const fraudStatus = statusResponse?.fraud_status
 
     if (!orderId || !transactionStatus) {
       return NextResponse.json(
@@ -45,16 +44,12 @@ export async function POST(req: Request) {
       )
     }
 
-    /**
-     * ✅ Format baru: order_id hanya memiliki bentuk UID-ORDERID
-     * Contoh: 5xCfgl-ORD123
-     */
+    // ✅ Pisahkan UID dan orderId dari format UID-ORDERID
     const splitIndex = orderId.indexOf('-')
     const uid = orderId.slice(0, splitIndex)
     const pureOrderId = orderId.slice(splitIndex + 1)
 
-    // ✅ Log supaya bisa cek path firestore
-    console.log(`Updating Firestore -> users/${uid}/orders/${pureOrderId}`)
+    console.log(`Updating Firestore -> users/orders/${uid}/${pureOrderId}`)
 
     // ✅ Update Firestore sesuai status transaksi
     if (transactionStatus === 'settlement') {

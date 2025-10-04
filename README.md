@@ -1,4 +1,4 @@
-# NextShop
+# Nikhu Next
 
 A simple booking with Next JS, Zustand, Shadcn UI, Firebase (Auth & Firestore), and Midtrans Payment Gateway
 

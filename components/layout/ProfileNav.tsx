@@ -1,36 +1,30 @@
-// components/layout/ProfileNavServer.tsx - YANG LEBIH CEPAT
+'use client'
+
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { getProfileMenu } from '@/lib/config'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/pages/api/auth/[...nextauth]'
-import { doc, getDoc } from 'firebase/firestore'
-import { db } from '@/app/firebase'
+import { useSession } from 'next-auth/react'
 
-export default async function ProfileNavServer() {
-  const session = await getServerSession(authOptions)
-  let role = 'user'
+interface ExtendedSession {
+  uid?: string
+  role?: string
+  [key: string]: any
+}
+
+export default function ProfileNav() {
+  const pathname = usePathname() as string
+  const { data: session } = useSession()
   
-  if (session?.uid) {
-    try {
-      // 🔥 FETCH LANGSUNG DARI FIRESTORE - LEBIH CEPAT
-      const userDocRef = doc(db, 'users', session.uid)
-      const userDoc = await getDoc(userDocRef)
-      if (userDoc.exists()) {
-        role = userDoc.data().role || 'user'
-      }
-    } catch (error) {
-      console.error('Error fetching role:', error)
-    }
-  }
-  
+  // 🔥 LANGSUNG PAKAI ROLE DARI SESSION ATAU DEFAULT 'user'
+  const role = (session as ExtendedSession)?.role || 'user'
   const profileMenu = getProfileMenu(role)
 
   return (
     <div className="flex gap-1 overflow-auto md:flex-col md:overflow-visible">
       {profileMenu.map((menu) => (
         <Button
-          variant="ghost"
+          variant={pathname === menu.href ? 'secondary' : 'ghost'}
           size="sm"
           className="justify-start md:w-full"
           key={menu.title}

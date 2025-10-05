@@ -1,36 +1,51 @@
+'use client'
+
 import TanstackQueryProvier from '@/components/TanstackQueryProvier'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { getProfileMenu } from '@/lib/config'
 import { cn, isOrderDetails } from '@/lib/utils'
 import Link from 'next/link'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/pages/api/auth/[...nextauth]'
-import { doc, getDoc } from 'firebase/firestore'
-import { db } from '@/app/firebase'
+import { usePathname } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import { useEffect, useState } from 'react'
+import { getFirestore, doc, getDoc } from 'firebase/firestore'
+import { app } from '@/app/firebase'
 
-export default async function Layout({ children }: { children: React.ReactNode }) {
-  // 🔥 Ambil pathname dari headers (alternative untuk server component)
-  const pathname = await getPathnameFromHeaders()
+export default function Layout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname() ?? '' // ✅ fallback agar tidak null
   const urlSplit = pathname.split('/')
   const orderDetailsPage = isOrderDetails(urlSplit)
 
-  // 🔥 Ambil session dan role langsung di server
-  const session = await getServerSession(authOptions)
-  let role = 'user'
+  const { data: session } = useSession()
+  const [role, setRole] = useState<string | null>(null)
 
-  if (session?.uid) {
-    try {
-      const userDocRef = doc(db, 'users', session.uid)
-      const userDoc = await getDoc(userDocRef)
-      
-      if (userDoc.exists()) {
-        role = userDoc.data().role || 'user'
+  // 🔥 Ambil role user dari Firestore
+  useEffect(() => {
+    const fetchRole = async () => {
+      try {
+        const uid =
+          (session as any)?.user?.id ||
+          (session as any)?.user?.uid ||
+          (session as any)?.uid
+        if (!uid) return
+
+        const db = getFirestore(app)
+        const userRef = doc(db, 'users', uid)
+        const snap = await getDoc(userRef)
+
+        if (snap.exists()) {
+          setRole(snap.data().role || null)
+        } else {
+          setRole(null)
+        }
+      } catch (error) {
+        console.error('Error fetching user role:', error)
       }
-    } catch (error) {
-      console.error('Error fetching user role:', error)
     }
-  }
+
+    fetchRole()
+  }, [session])
 
   const profileMenu = getProfileMenu(role)
 
@@ -70,20 +85,4 @@ export default async function Layout({ children }: { children: React.ReactNode }
       </div>
     </div>
   )
-}
-
-// 🔥 Helper function untuk mendapatkan pathname di server component
-async function getPathnameFromHeaders(): Promise<string> {
-  // Import dinamis untuk akses headers
-  const { headers } = await import('next/headers')
-  const headerList = await headers()
-  const pathname = headerList.get('x-pathname') || headerList.get('referer') || '/'
-  
-  // Extract pathname dari referer atau use default
-  if (pathname.startsWith('http')) {
-    const url = new URL(pathname)
-    return url.pathname
-  }
-  
-  return pathname
 }

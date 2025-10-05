@@ -1,10 +1,10 @@
-// app/api/auth/[...nextauth]/route.ts - YANG LEBIH CEPAT
 // @ts-nocheck
 
 import NextAuth, { AuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { signInWithEmailAndPassword } from 'firebase/auth'
-import { auth } from '@/app/firebase' // 🔥 HAPUS db IMPORT
+import { auth, db } from '@/app/firebase' // Pastikan db sudah di-import
+import { doc, getDoc } from 'firebase/firestore'
 
 export const authOptions: AuthOptions = {
   pages: {
@@ -14,20 +14,36 @@ export const authOptions: AuthOptions = {
     CredentialsProvider({
       name: 'Credentials',
       credentials: {},
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         return await signInWithEmailAndPassword(
           auth,
           (credentials as any).email || '',
           (credentials as any).password || '',
         )
-          .then((userCredential) => {
+          .then(async (userCredential) => {
             if (userCredential.user) {
-              // 🔥 LANGSUNG RETURN TANPA FETCH FIRESTORE
-              return {
-                id: userCredential.user.uid, // NextAuth wajib ada 'id'
-                uid: userCredential.user.uid,
-                email: userCredential.user.email,
-                // Role akan di-fetch langsung di component nanti
+              // 🔹 Ambil data user dari Firestore untuk mendapatkan role
+              const userDocRef = doc(db, 'users', userCredential.user.uid)
+              const userDoc = await getDoc(userDocRef)
+              
+              if (userDoc.exists()) {
+                const userData = userDoc.data()
+                
+                // 🔹 Return user object dengan role
+                return {
+                  uid: userCredential.user.uid,
+                  email: userCredential.user.email,
+                  role: userData.role || 'user', // Default role adalah 'user'
+                  ...userCredential.user
+                }
+              } else {
+                // Jika dokumen user tidak ditemukan, gunakan default role
+                return {
+                  uid: userCredential.user.uid,
+                  email: userCredential.user.email,
+                  role: 'user',
+                  ...userCredential.user
+                }
               }
             }
             return null
@@ -43,22 +59,17 @@ export const authOptions: AuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.uid = user.uid
-        // 🔥 Token TIDAK PERLU ROLE di sini
+        token.role = user.role // 🔹 Tambahkan role ke token
       }
       return token
     },
     async session({ session, token }) {
       if (token) {
-        session.uid = token.uid as string
-        // 🔥 Session TIDAK PERLU ROLE di sini
+        session.uid = token.uid
+        session.role = token.role // 🔹 Tambahkan role ke session
       }
       return session
     },
-  },
-  // 🔥 TAMBAHKAN UNTUK PERFORMANCE
-  session: {
-    strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
 }
 

@@ -1,13 +1,12 @@
 import serverUid from '@/lib/actions/auth/server-uid'
-import OrdersContainer from '@/components/orders/OrdersContainer'
+import OrdersFull from '@/components/orders/OrdersFull'
 
 export default async function Page() {
   const uid = (await serverUid()) as string
 
   return (
     <>
-
-      <OrdersContainer uid={uid} />
+      <OrdersFull />
     </>
   )
 }

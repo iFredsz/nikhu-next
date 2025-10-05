@@ -159,49 +159,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Products Section */}
-      <section className='flex flex-col items-center mb-16'>
-        <h2 className='mb-4 md:mb-8 w-full text-left'>Discover Our Products</h2>
-        <div className='mb-10 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6'>
-          {allProducts?.map((product) => {
-            const formattedPrice = idrFormatter(product.price)
-
-            return (
-              <motion.div 
-                key={product.id}
-                whileHover={{ y: -5 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Link href={`/products/${product.slug}`}>
-                  <div className='relative overflow-hidden rounded-lg'>
-                    <Image
-                      src={product.thumbnail}
-                      width={350}
-                      height={350}
-                      alt={product.name}
-                      className='mb-2 object-cover w-full h-48 md:h-64 transition-transform duration-300 hover:scale-105'
-                    />
-                    {product.hot && (
-                      <Badge className='absolute right-2 top-2 bg-red-500 hover:bg-red-600 text-[8px] leading-normal lg:text-xs'>
-                        HOT
-                      </Badge>
-                    )}
-                  </div>
-                  <p className='mb-1 text-center text-sm lg:text-lg font-medium'>
-                    {product.name}
-                  </p>
-                  <p className='text-center text-xs lg:text-sm text-gray-600'>
-                    {formattedPrice}
-                  </p>
-                </Link>
-              </motion.div>
-            )
-          })}
-        </div>
-        <Button size='sm' asChild className='mx-auto'>
-          <Link href='/products'>Explore Our Collection</Link>
-        </Button>
-      </section>
+     
 
       {/* Portfolio Section */}
       <section className="py-16 relative">

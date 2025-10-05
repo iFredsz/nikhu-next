@@ -92,35 +92,11 @@ export default function ReceiptTemplate({ orderData, orderId }: Props) {
           <span>{orderId}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Tanggal:</span>
-          <span>{formattedDate}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span>Status:</span>
           <span>LUNAS</span>
         </div>
       </div>
 
-      {/* Customer Info */}
-      {(customerName || customerWa) && (
-        <div style={{ borderTop: '1px dashed black', marginTop: '10px', paddingTop: '8px', marginBottom: '8px' }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>CUSTOMER</div>
-          <div style={{ textAlign: 'left', padding: '0 4px' }}>
-            {customerName && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                <span>Nama:</span>
-                <span>{customerName}</span>
-              </div>
-            )}
-            {customerWa && (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>No. WA:</span>
-                <span>{customerWa}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Booking Details */}
       <div style={{ borderTop: '1px dashed black', marginTop: '10px', paddingTop: '8px', marginBottom: '8px' }}>

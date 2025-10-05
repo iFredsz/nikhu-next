@@ -18,7 +18,7 @@ export default function OrdersContainer(props: Props) {
     isError,
     error,
   } = useQuery({
-    queryKey: ['orders'],
+    queryKey: ['orders', uid], // tambahkan uid ke queryKey
     queryFn: async () => await getOrders(uid),
   })
 
@@ -30,12 +30,25 @@ export default function OrdersContainer(props: Props) {
     )
   }
 
-  return (
-    <>
-      <div className='flex flex-col gap-4'>
-        {!data && <OrdersEmptyPlaceholder />}
-        {data && data.map((order: any) => <OrdersCard key={order.order_id} data={order} />)}
+  if (isError) {
+    console.error('Error fetching orders:', error)
+    return (
+      <div className='pt-8 text-center text-red-600'>
+        Error loading orders. Please try again.
       </div>
-    </>
+    )
+  }
+
+  // Perbaikan: cek jika data tidak ada atau array kosong
+  if (!data || data.length === 0) {
+    return <OrdersEmptyPlaceholder />
+  }
+
+  return (
+    <div className='flex flex-col gap-4'>
+      {data.map((order: any) => (
+        <OrdersCard key={order.order_id} data={order} />
+      ))}
+    </div>
   )
 }

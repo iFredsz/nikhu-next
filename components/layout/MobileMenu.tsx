@@ -29,7 +29,7 @@ export default function MobileMenu() {
         <SheetHeader className='mb-8'>
           <SheetTitle>
             <Link href='/'>
-              <p className='text-left text-xl font-bold'>NextShop</p>
+              <p className='text-left text-xl font-bold'>Nikhu Studio</p>
             </Link>
           </SheetTitle>
         </SheetHeader>

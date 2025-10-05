@@ -5,27 +5,35 @@ export default async function middleware(req: NextRequest) {
   const token = await getToken({ req })
   const { pathname } = req.nextUrl
 
-  if (token) {
-    if (pathname === '/login' || pathname === '/forgot-password' || pathname === '/signup') {
-      let url = req.nextUrl.clone()
-      url.pathname = '/'
-      return NextResponse.redirect(url)
-    }
-    return NextResponse.next()
-  }
+  const adminPaths = [
+    '/profile/admin',
+    '/profile/admin/edit-layout',
+    '/profile/admin/edit-product',
+  ]
 
-  if (!token) {
-    if (pathname.includes('/profile')) {
-      let url = req.nextUrl.clone()
+  // 🔹 Cek akses admin
+  if (adminPaths.some((path) => pathname.startsWith(path))) {
+    if (!token) {
+      const url = req.nextUrl.clone()
       url.pathname = '/login'
       return NextResponse.redirect(url)
     }
-    else if (pathname === '/transaction') {
-      let url = req.nextUrl.clone()
+
+    if (token.role !== 'admin') {
+      const url = req.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)
     }
   }
+
+  // 🔹 Cek login untuk profile biasa
+  if (!token && pathname.startsWith('/profile')) {
+    const url = req.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+
+  return NextResponse.next()
 }
 
 export const config = {

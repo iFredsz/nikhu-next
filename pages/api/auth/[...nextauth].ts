@@ -3,7 +3,7 @@ import NextAuth, { AuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '@/app/firebase'
-import { adminDb } from '@/app/firebaseAdmin'
+
 
 export const authOptions: AuthOptions = {
   pages: {

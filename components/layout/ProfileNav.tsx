@@ -4,39 +4,54 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { getProfileMenu } from '@/lib/config'
-import { isOrderDetails } from '@/lib/utils'
 import { useEffect, useState } from 'react'
-import { getAuth } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
-import { db } from '@/app/firebase' // pastikan ini mengarah ke instance Firestore kamu
+import { useSession } from 'next-auth/react'
+
+// Define extended session type
+interface ExtendedSession {
+  uid?: string
+  role?: string
+  [key: string]: any
+}
 
 export default function ProfileNav() {
   const pathname = usePathname() as string
+  const { data: session, status } = useSession()
   const [role, setRole] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchRole = async () => {
-      const auth = getAuth()
-      const user = auth.currentUser
-
-      if (user) {
-        // misalnya role disimpan di Firestore /users/{uid}/role
-        const userDoc = await getDoc(doc(db, 'users', user.uid))
-        if (userDoc.exists()) {
-          const data = userDoc.data()
-          setRole(data.role || 'user')
-        } else {
-          setRole('user')
-        }
-      } else {
-        setRole('user')
-      }
+    if (status === 'loading') return
+    
+    const extendedSession = session as ExtendedSession
+    
+    if (extendedSession?.role) {
+      setRole(extendedSession.role as string)
+    } else if (session) {
+      setRole('user')
+    } else {
+      setRole(null)
     }
-
-    fetchRole()
-  }, [])
+  }, [session, status])
 
   const profileMenu = getProfileMenu(role)
+
+  if (status === 'loading') {
+    return (
+      <div className="flex gap-1 overflow-auto md:flex-col md:overflow-visible">
+        {[1, 2, 3].map((item) => (
+          <Button
+            key={item}
+            variant="ghost"
+            size="sm"
+            className="justify-start md:w-full animate-pulse"
+            disabled
+          >
+            <div className="h-4 w-20 bg-gray-200 rounded"></div>
+          </Button>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="flex gap-1 overflow-auto md:flex-col md:overflow-visible">

@@ -12,6 +12,7 @@ import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Pagination } from 'swiper/modules'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Camera, UserCheck, Clock, User, ChevronLeft, ChevronRight, Video } from "lucide-react";
+import { toast } from 'sonner'
 
 import 'swiper/css'
 import 'swiper/css/navigation'
@@ -171,22 +172,25 @@ export default function Home() {
 
   // Newsletter handler
   const handleSubscribe = () => {
-    if (!email) {
-      alert("Masukkan email terlebih dahulu.")
-      return
-    }
-    // Simpan ke database / kirim ke API sesuai kebutuhan
-    console.log("Subscribed with email:", email)
-    alert("Terima kasih sudah subscribe!")
-    setEmail("")
+  if (!email) {
+    toast.error("Masukkan email terlebih dahulu.")
+    return
   }
+
+  // Simpan ke database / kirim ke API sesuai kebutuhan
+  console.log("Subscribed with email:", email)
+
+  toast.success("Terima kasih sudah subscribe!")
+  setEmail("")
+}
+
 
   return (
     <>
      {/* Hero Section */}
 <section className="section-full-width grid grid-cols-1 items-center md:grid-cols-2 bg-[#f3f4f6]">
   <div className="bg-[#f3f4f6] mx-auto mb-12 mt-8 flex max-w-[600px] flex-col items-center text-center md:m-0 md:max-w-none md:items-start md:text-left md:pr-[10%]">
-    <h1 className="mb-4 text-3xl font-semibold">
+    <h1 className="mb-4 md:ml-8 text-2xl font-semibold">
       Momentmu, Lensa Kami :)
     </h1>
 
@@ -197,13 +201,13 @@ export default function Home() {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
         transition={{ duration: 0.5 }}
-        className="mb-8 text-base min-h-[60px] flex items-center justify-center md:justify-start"
+        className="mb-8 md:ml-8 text-base min-h-[60px] flex items-center justify-center md:justify-start"
       >
         {subtitles[subtitleIndex]}
       </motion.p>
     </AnimatePresence>
 
-    <Button asChild className="px-12">
+    <Button asChild className="md:ml-8 px-12">
       <Link href="/products">Booking Now</Link>
     </Button>
   </div>

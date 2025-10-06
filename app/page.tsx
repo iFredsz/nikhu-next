@@ -183,32 +183,36 @@ export default function Home() {
 
   return (
     <>
-      {/* Hero Section */}
-      <section className='section-full-width grid grid-cols-1 items-center md:grid-cols-2 bg-[#f3f4f6] '>
-        <div className='bg-[#f3f4f6] mx-auto mb-12 mt-8 flex max-w-[600px] flex-col items-center md:m-0 md:max-w-none md:items-start md:pr-[10%]'>
-          <h1 className='mb-4 text-center ml-8 md:text-left'>
-            Momentmu, Lensa Kami :)
-          </h1>
-          <AnimatePresence mode='wait'>
-            <motion.p
-              key={subtitleIndex}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.5 }}
-              className='mb-8 ml-8 text-center md:text-left min-h-[60px] flex items-center'
-            >
-              {subtitles[subtitleIndex]}
-            </motion.p>
-          </AnimatePresence>
-          <Button asChild className='px-12 ml-8'>
-            <Link href='/products'>Booking Now</Link>
-          </Button>
-        </div>
-        <div className='relative'>
-          <CarouselFade images={heroImageUrls} />
-        </div>
-      </section>
+     {/* Hero Section */}
+<section className="section-full-width grid grid-cols-1 items-center md:grid-cols-2 bg-[#f3f4f6]">
+  <div className="bg-[#f3f4f6] mx-auto mb-12 mt-8 flex max-w-[600px] flex-col items-center text-center md:m-0 md:max-w-none md:items-start md:text-left md:pr-[10%]">
+    <h1 className="mb-4 text-3xl font-semibold">
+      Momentmu, Lensa Kami :)
+    </h1>
+
+    <AnimatePresence mode="wait">
+      <motion.p
+        key={subtitleIndex}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.5 }}
+        className="mb-8 text-base min-h-[60px] flex items-center justify-center md:justify-start"
+      >
+        {subtitles[subtitleIndex]}
+      </motion.p>
+    </AnimatePresence>
+
+    <Button asChild className="px-12">
+      <Link href="/products">Booking Now</Link>
+    </Button>
+  </div>
+
+  <div className="relative">
+    <CarouselFade images={heroImageUrls} />
+  </div>
+</section>
+
 
      
 

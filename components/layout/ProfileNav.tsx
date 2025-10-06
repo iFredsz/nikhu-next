@@ -4,21 +4,16 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { getProfileMenu } from '@/lib/config'
-import { useSession } from 'next-auth/react'
 
-interface ExtendedSession {
-  uid?: string
-  role?: string
-  [key: string]: any
+interface ProfileNavProps {
+  userRole: string
 }
 
-export default function ProfileNav() {
+export default function ProfileNav({ userRole }: ProfileNavProps) {
   const pathname = usePathname() as string
-  const { data: session } = useSession()
   
-  // 🔥 LANGSUNG PAKAI ROLE DARI SESSION ATAU DEFAULT 'user'
-  const role = (session as ExtendedSession)?.role || 'user'
-  const profileMenu = getProfileMenu(role)
+  // 🔥 Langsung pakai role dari props (tanpa delay)
+  const profileMenu = getProfileMenu(userRole)
 
   return (
     <div className="flex gap-1 overflow-auto md:flex-col md:overflow-visible">

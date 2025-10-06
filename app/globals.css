@@ -139,7 +139,76 @@ h4 {
   width: 100%;
 }
 
-/* Tambahkan di bagian paling bawah file globals.css */
+/* Testimonial Animation - FIXED VERSION */
+@keyframes testimonial-scroll {
+  0% { 
+    transform: translateX(0); 
+  }
+  100% { 
+    /* Hitungan yang tepat berdasarkan card width dan gap */
+    transform: translateX(calc(-1 * (var(--card-width, 300px) + var(--card-gap, 24px)) * var(--testimonial-count, 1))); 
+  }
+}
+
+.section-full-width {
+  margin-left: calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+  width: 100vw; 
+  position: relative;
+}
+
+.testimonial-container {
+  -webkit-mask: linear-gradient(90deg, transparent, white 20%, white 80%, transparent);
+  mask: linear-gradient(90deg, transparent, white 20%, white 80%, transparent);
+  overflow: hidden;
+  position: relative;
+}
+
+.testimonial-track {
+  animation: testimonial-scroll 40s linear infinite;
+  display: flex;
+  gap: var(--card-gap, 24px);
+  width: max-content;
+  /* Critical fixes untuk smooth animation */
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+  /* Pastikan tidak ada white-space atau gap tambahan */
+  font-size: 0;
+}
+
+.testimonial-track:hover {
+  animation-play-state: paused;
+}
+
+.testimonial-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  min-width: var(--card-width, 300px);
+  background: white;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
+  flex-shrink: 0;
+  /* Reset font-size setelah container */
+  font-size: 1rem;
+  /* Hardware acceleration */
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+.testimonial-card:hover {
+  transform: translateY(-5px) translate3d(0, 0, 0);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Optional: Untuk browser yang support, gunakan composition */
+@supports (animation-composition: accumulate) {
+  .testimonial-track {
+    animation-composition: accumulate;
+  }
+}
+
 
 /* Reset untuk elemen root dan body */
 html, body {
@@ -168,9 +237,19 @@ footer {
   max-width: 100vw !important;
 }
 
+@media (max-width: 640px) {
+  .testimonial-container {
+    -webkit-mask: linear-gradient(90deg, transparent, white 5%, white 95%, transparent);
+    mask: linear-gradient(90deg, transparent, white 5%, white 95%, transparent);
+  }
+
 @media (max-width: 767px) {
   #product-details .thumbs-container .swiper-slide {
     width: 70px;
     height: 70px;
   }
-}
+
+  .testimonial-card {
+    min-width: 340px;
+  }
+}}

@@ -11,7 +11,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Pagination } from 'swiper/modules'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Camera, UserCheck, Clock, User, ChevronLeft, ChevronRight, Video } from "lucide-react";
 
 import 'swiper/css'
 import 'swiper/css/navigation'
@@ -34,6 +34,13 @@ const subtitles = [
   "Fotografi Profesional dengan Sentuhan Artistik",
 ]
 
+interface Testimonial {
+  message: string;
+  name: string;
+  photo: string;
+  rating: number;
+  role: string;
+}
 interface Portfolio {
   id: string
   title: string
@@ -41,6 +48,11 @@ interface Portfolio {
 }
 
 export default function Home() {
+
+
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const testimonialTrackRef = useRef<HTMLDivElement>(null);
+
   const [subtitleIndex, setSubtitleIndex] = useState(0)
   const [selectedImg, setSelectedImg] = useState<string | null>(null)
   const [portfolioImages, setPortfolioImages] = useState<Portfolio[]>([])
@@ -73,6 +85,45 @@ export default function Home() {
     )
     return () => unsub()
   }, [])
+
+    // Load testimonials
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "testimonials"), (snapshot) => {
+      const data = snapshot.docs.map((doc) => doc.data() as Testimonial);
+      setTestimonials(data);
+    });
+    return () => unsub();
+  }, []);
+
+  // Setup testimonial animation
+  useEffect(() => {
+    if (testimonialTrackRef.current && testimonials.length > 0) {
+      const track = testimonialTrackRef.current;
+      // Duplicate content for seamless loop
+      track.innerHTML = track.innerHTML + track.innerHTML;
+      
+      // Add dynamic scroll animation
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes scroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(calc(-340px * ${testimonials.length})); }
+        }
+        
+        @media (max-width: 640px) {
+          @keyframes scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(calc(-300px * ${testimonials.length})); }
+          }
+        }
+      `;
+      document.head.appendChild(style);
+      
+      return () => {
+        document.head.removeChild(style);
+      };
+    }
+  }, [testimonials]);
 
   // Ganti subtitle otomatis
   useEffect(() => {
@@ -133,9 +184,9 @@ export default function Home() {
   return (
     <>
       {/* Hero Section */}
-      <section className='mb-12 grid grid-cols-1 items-center md:mb-16 md:min-h-[450px] md:grid-cols-2 lg:min-h-[650px]'>
-        <div className='mx-auto mb-12 mt-8 flex max-w-[600px] flex-col items-center md:m-0 md:max-w-none md:items-start md:pr-[10%]'>
-          <h1 className='mb-4 text-center md:text-left'>
+      <section className='section-full-width grid grid-cols-1 items-center md:grid-cols-2 bg-[#f3f4f6] '>
+        <div className='bg-[#f3f4f6] mx-auto mb-12 mt-8 flex max-w-[600px] flex-col items-center md:m-0 md:max-w-none md:items-start md:pr-[10%]'>
+          <h1 className='mb-4 text-center ml-8 md:text-left'>
             Momentmu, Lensa Kami :)
           </h1>
           <AnimatePresence mode='wait'>
@@ -145,12 +196,12 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.5 }}
-              className='mb-8 text-center md:text-left min-h-[60px] flex items-center'
+              className='mb-8 ml-8 text-center md:text-left min-h-[60px] flex items-center'
             >
               {subtitles[subtitleIndex]}
             </motion.p>
           </AnimatePresence>
-          <Button asChild className='px-12'>
+          <Button asChild className='px-12 ml-8'>
             <Link href='/products'>Booking Now</Link>
           </Button>
         </div>
@@ -162,7 +213,7 @@ export default function Home() {
      
 
       {/* Portfolio Section */}
-      <section className="py-16 relative">
+      <section className="section-full-width bg-[#f3f4f6] py-16 relative">
         <div className="container mx-auto px-4">
           {portfolioImages.length > 0 && (
             <h2 className="text-3xl font-bold mb-12 text-center">Hasil Karya Kami</h2>
@@ -289,18 +340,274 @@ export default function Home() {
         </AnimatePresence>
       </section>
 
+       {/* Paket & Booking CTA */}
+      <section className="section-full-width py-20 bg-gradient-to-r from-gray-700 via-gray-500 to-gray-400 text-white relative overflow-hidden">
+        {/* Decorative Shapes */}
+        <motion.div
+          className="absolute top-[-80px] left-[-80px] w-72 h-72 bg-white/20 rounded-full blur-3xl"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 2 }}
+        />
+        <motion.div
+          className="absolute bottom-[-60px] right-[-60px] w-64 h-64 bg-white/10 rounded-full blur-3xl"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 2, delay: 0.5 }}
+        />
+
+        {/* Bagian CTA */}
+        <div className="container mx-auto px-4 text-center relative z-10">
+          <h2 className="text-4xl md:text-5xl font-bold mb-4">
+            Paket Fotografi Terjangkau
+          </h2>
+          <p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto">
+            Nikmati layanan fotografi profesional mulai dari{" "}
+            <span className="font-bold text-yellow-300">Rp 50.000</span>! Cocok untuk pre-wedding, family, portrait, dan semua momen spesialmu.
+          </p>
+
+          <Link href="/products">
+      <motion.div
+        whileHover={{ scale: 1.05, boxShadow: "0px 0px 15px rgba(255,255,255,0.5)" }}
+        whileTap={{ scale: 0.95 }}
+        className="inline-block px-10 py-4 bg-white text-yellow-500 font-bold rounded-full shadow-lg hover:bg-yellow-100 transition-all cursor-pointer"
+      >Booking Now</motion.div>
+    </Link>
+        </div>
+      </section>
+
+     {/* Testimonials */}
+{testimonials.length > 0 && (
+  <section
+    className="section-full-width py-16 text-center relative overflow-hidden"
+    style={{
+      background: "#f3f4f6",
+    }}
+  >
+    <h2 className="text-3xl md:text-4xl font-bold mb-12 text-gray-800">
+      Apa Kata Klien Kami
+    </h2>
+
+    <div className="testimonial-container overflow-hidden py-4">
+      <div 
+        className="testimonial-track"
+        style={{ 
+          '--testimonial-count': testimonials.length,
+          '--card-width': '340px',
+          '--card-gap': '24px'
+        } as React.CSSProperties}
+      >
+        {/* Duplicate testimonials 2x saja tapi dengan teknik yang benar */}
+        {testimonials.map((t, i) => (
+          <div
+            key={`original-${i}`}
+            className="testimonial-card"
+          >
+            {/* Avatar */}
+            {t.photo ? (
+              <div className="relative w-16 h-16 mx-auto mb-4">
+                <Image
+                  src={t.photo}
+                  alt={t.name}
+                  fill
+                  className="rounded-full object-cover border-2 border-gray-300"
+                />
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
+                <User className="text-gray-600 w-8 h-8" />
+              </div>
+            )}
+
+            {/* Message */}
+            <p className="text-gray-700 italic mb-4">
+              &ldquo;{t.message}&rdquo;
+            </p>
+
+            {/* Rating */}
+            <div className="flex justify-center mb-2 text-yellow-500">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <svg
+                  key={idx}
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill={idx < t.rating ? "currentColor" : "none"}
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.003 6.145h6.462c.969 0 1.371 1.24.588 1.81l-5.234 3.805 2.003 6.145c.3.921-.755 1.688-1.539 1.118l-5.233-3.804-5.233 3.804c-.783.57-1.838-.197-1.539-1.118l2.003-6.145-5.234-3.805c-.783-.57-.38-1.81.588-1.81h6.462l2.003-6.145z"
+                  />
+                </svg>
+              ))}
+            </div>
+
+            {/* Name + Role */}
+            <h4 className="font-semibold text-gray-800">{t.name}</h4>
+            <span className="text-sm text-gray-500">{t.role}</span>
+          </div>
+        ))}
+        
+        {/* Duplicate yang SEAMLESS - tanpa gap */}
+        {testimonials.map((t, i) => (
+          <div
+            key={`duplicate-${i}`}
+            className="testimonial-card"
+          >
+            {/* Avatar */}
+            {t.photo ? (
+              <div className="relative w-16 h-16 mx-auto mb-4">
+                <Image
+                  src={t.photo}
+                  alt={t.name}
+                  fill
+                  className="rounded-full object-cover border-2 border-gray-300"
+                />
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
+                <User className="text-gray-600 w-8 h-8" />
+              </div>
+            )}
+
+            {/* Message */}
+            <p className="text-gray-700 italic mb-4">
+              &ldquo;{t.message}&rdquo;
+            </p>
+
+            {/* Rating */}
+            <div className="flex justify-center mb-2 text-yellow-500">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <svg
+                  key={idx}
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill={idx < t.rating ? "currentColor" : "none"}
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.003 6.145h6.462c.969 0 1.371 1.24.588 1.81l-5.234 3.805 2.003 6.145c.3.921-.755 1.688-1.539 1.118l-5.233-3.804-5.233 3.804c-.783.57-1.838-.197-1.539-1.118l2.003-6.145-5.234-3.805c-.783-.57-.38-1.81.588-1.81h6.462l2.003-6.145z"
+                  />
+                </svg>
+              ))}
+            </div>
+
+            {/* Name + Role */}
+            <h4 className="font-semibold text-gray-800">{t.name}</h4>
+            <span className="text-sm text-gray-500">{t.role}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+)}
+
+ {/* Why Choose Us */}
+      <section className="section-full-width py-16 bg-[#f3f4f6]">
+        <div className="container mx-auto text-center px-4">
+          <motion.h2
+            className="text-3xl md:text-4xl font-bold mb-12"
+            initial={{ opacity: 0, y: -20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            Mengapa Memilih Nikhu Studio
+          </motion.h2>
+          {/* Grid fitur */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[
+              {
+                icon: <Camera className="h-10 w-10 text-white" />,
+                title: "Peralatan Profesional",
+                desc: "Kamera & lighting terbaik untuk momenmu.",
+                bgColor: "bg-gray-400",
+              },
+              {
+                icon: <UserCheck className="h-10 w-10 text-white" />,
+                title: "Fotografer Berpengalaman",
+                desc: "Hasil foto sempurna setiap sesi.",
+                bgColor: "bg-green-400",
+              },
+              {
+                icon: <Video className="h-10 w-10 text-white" />,
+                title: "Setup Kreatif",
+                desc: "Properti dan latar unik & memorable.",
+                bgColor: "bg-purple-400",
+              },
+              {
+                icon: <Clock className="h-10 w-10 text-white" />,
+                title: "Jadwal Fleksibel",
+                desc: "Booking sesuai jadwalmu.",
+                bgColor: "bg-pink-400",
+              },
+            ].map((item, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.2, duration: 0.6 }}
+                whileHover={{
+                  scale: 1.05,
+                  rotate: 1,
+                  boxShadow: "0px 10px 20px rgba(0,0,0,0.2)",
+                }}
+                className={`p-6 rounded-2xl shadow-lg ${item.bgColor}`}
+              >
+                {/* Icon */}
+                <motion.div
+                  className="flex justify-center mb-3"
+                  whileHover={{ scale: 1.2, rotate: 10 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {item.icon}
+                </motion.div>
+                <h4 className="text-xl font-semibold mb-2 text-white">{item.title}</h4>
+                <p className="text-white">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="section-full-width py-16 bg-[#f3f4f6]">
+        <div className="container mx-auto px-4 max-w-3xl">
+          <h2 className="text-3xl font-bold mb-8 text-center">Pertanyaan Umum</h2>
+          <div className="space-y-4">
+            <div className="p-4 bg-white rounded-xl shadow">
+              <h4 className="font-semibold">Apakah bisa foto di luar studio?</h4>
+              <p className="mt-2 text-gray-700">Tentu, kami menyediakan opsi outdoor photoshoot sesuai paket.</p>
+            </div>
+            <div className="p-4 bg-white rounded-xl shadow">
+              <h4 className="font-semibold">Berapa lama proses editing foto?</h4>
+              <p className="mt-2 text-gray-700">Proses editing biasanya 3-5 hari kerja untuk paket standar.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
       {/* Newsletter */}
-      <section className="py-8 md:py-16 text-center px-4">
+      <section className="section-full-width bg-[#f3f4f6] py-8 md:py-16 text-center px-4">
         <h2 className="text-2xl md:text-3xl font-bold mb-4">Dapatkan Tips Fotografi & Promo</h2>
         <p className="mb-4 md:mb-6 text-gray-700 text-sm md:text-base">Subscribe newsletter kami</p>
         <div className="flex justify-center gap-2 flex-wrap max-w-xs mx-auto">
           <input
-  type="email"
-  placeholder="Email Anda"
-  className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
-  value={email}
-  onChange={(e) => setEmail(e.target.value)}
-/>
+            type="email"
+            placeholder="Email Anda"
+            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
 
           <button
             className="px-4 py-2 bg-yellow-400 text-white font-semibold rounded-lg hover:bg-yellow-500 transition text-sm"

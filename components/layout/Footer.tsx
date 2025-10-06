@@ -24,13 +24,6 @@ const Footer = () => {
   // Data sosial media dengan nama platform yang jelas
   const socialMedia = [
     { 
-      icon: FaFacebookF, 
-      href: "https://www.facebook.com/",
-      color: "hover:bg-blue-600 hover:text-white",
-      bg: "bg-blue-500",
-      name: "Facebook"
-    },
-    { 
       icon: FaTiktok, 
       href: "https://www.tiktok.com/@",
       color: "hover:bg-black hover:text-white",

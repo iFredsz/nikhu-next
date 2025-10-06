@@ -18,34 +18,31 @@ import {
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { signOutNextAuthFirebase } from '@/lib/actions/auth/sign-out-next-auth-firebase'
-import { getFirestore, doc, getDoc } from 'firebase/firestore'
 import { useSession } from 'next-auth/react'
-import { app } from '@/app/firebase' // pastikan sudah benar path firebase config kamu
 
 export default function UserAccountNav() {
   const [isOpen, setIsOpen] = useState(false)
-  const [role, setRole] = useState<string | null>(null)
+  const [role, setRole] = useState<string>('user')
   const { data: session } = useSession()
 
-  const handleClose = () => setIsOpen(false)
-
-  // 🔥 Ambil role user dari Firestore berdasarkan UID
+  // 🔥 Fetch role dari API route
   useEffect(() => {
-    const fetchUserRole = async () => {
-      const uid = (session as any)?.uid
-      if (!uid) return
-
-      const db = getFirestore(app)
-      const userRef = doc(db, 'users', uid)
-      const userSnap = await getDoc(userRef)
-
-      if (userSnap.exists()) {
-        setRole(userSnap.data().role || null)
+    const fetchRole = async () => {
+      try {
+        const res = await fetch('/api/user/role')
+        const data = await res.json()
+        setRole(data.role)
+      } catch (error) {
+        console.error('Error fetching role:', error)
       }
     }
 
-    fetchUserRole()
+    if (session) {
+      fetchRole()
+    }
   }, [session])
+
+  const handleClose = () => setIsOpen(false)
 
   // 🔹 Menu dinamis
   const menu = [
@@ -85,7 +82,7 @@ export default function UserAccountNav() {
         <DropdownMenuLabel>My Account</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {menu.map((menuItem) => (
-          <DropdownMenuItem key={menuItem.title} onClick={handleClose}>
+          <DropdownMenuItem key={menuItem.title} onClick={handleClose} asChild>
             <Link href={menuItem.href} className='flex items-center'>
               <menuItem.icon className='mr-2 h-4 w-4' />
               {menuItem.title}

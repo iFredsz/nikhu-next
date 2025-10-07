@@ -10,36 +10,42 @@ import ProgressbarProvider from '@/components/ProgressbarProvider'
 import SessionProvider from '@/components/SessionProvider'
 import { Toaster } from 'sonner'
 import { getServerSession } from 'next-auth'
+import WhatsAppButton from '@/components/global/WhatsappButton' 
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
   title: 'Nikhu Studio - Foto Studio di Salatiga',
-  description: 'More Than Just PIctures',
+  description: 'More Than Just Pictures',
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession()
 
   return (
-    <html lang='en'>
+    <html lang="en">
       <body className={cn('bg-background font-sans antialiased', inter.variable)}>
         <ThemeProvider
-          attribute='class'
-          defaultTheme='system'
+          attribute="class"
+          defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
           <SessionProvider session={session}>
-            <div id='web-wrapper' className='container flex min-h-screen flex-col'>
+            <div id="web-wrapper" className="container flex min-h-screen flex-col">
               <Header />
-              <Separator className='hidden md:block' />
-              <main className='flex-1 pb-20'>
+              <Separator className="hidden md:block" />
+
+              <main className="flex-1 pb-20">
                 <ProgressbarProvider>{children}</ProgressbarProvider>
               </main>
-              <Toaster position='top-center' closeButton />
+
+              <Toaster position="top-center" closeButton />
               <Footer />
             </div>
+
+            
+            <WhatsAppButton />
           </SessionProvider>
         </ThemeProvider>
       </body>

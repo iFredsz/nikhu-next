@@ -50,35 +50,47 @@ export default function Contact() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validateForm()) {
-      setIsSubmitting(true);
-      try {
-        await emailjs.send(
-          "service_foyi2qj", // ganti dengan service ID kamu
-          "template_ubdsqtg", // ganti dengan template ID kamu
-          formData,
-          "Jp8clH2zr4eHdtL9J" // ganti dengan public key kamu
-        );
-        toast.success("Message sent successfully!");
-        setFormData({ name: "", email: "", subject: "", message: "" });
-        setErrors({});
-      } catch (error) {
-        toast.error("Failed to send message. Please try again.");
-      } finally {
-        setIsSubmitting(false);
-      }
+  e.preventDefault();
+
+  if (!validateForm()) return;
+
+  setIsSubmitting(true);
+
+  try {
+    const serviceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!;
+    const templateId = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!;
+    const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!;
+
+    if (!serviceId || !templateId || !publicKey) {
+      throw new Error("Missing EmailJS environment variables");
     }
-  };
+
+    const result = await emailjs.send(serviceId, templateId, formData, publicKey);
+
+    if (result.status === 200) {
+      toast.success("Pesan berhasil dikirim!");
+      setFormData({ name: "", email: "", subject: "", message: "" });
+      setErrors({});
+    } else {
+      toast.error("Gagal mengirim pesan. Silakan coba lagi.");
+    }
+  } catch (error: any) {
+    console.error("EmailJS Error:", error);
+    toast.error("Terjadi kesalahan saat mengirim pesan.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   const openGoogleMaps = () => {
-    window.open("https://maps.app.goo.gl/MLM6WMFLaq3Hw9VT9", "_blank");
+    window.open("https://maps.app.goo.gl/Hg59sf1Gp6NGAYie8?g_st=ipc", "_blank");
   };
 
   return (
     <section
       id="contact"
-      className="py-12 md:py-12 relative overflow-hidden bg-white"
+      className="py-12 md:py-12 relative overflow-hidden"
     >
       <div className="container mx-auto px-4 max-w-7xl relative z-10">
         {/* Header */}
@@ -113,103 +125,82 @@ export default function Contact() {
 
               <div className="space-y-3 md:space-y-4">
                 {[
-                  {
-                    icon: Phone,
-                    text: "+62 857-0226-2321",
-                    href: "https://wa.me/+6285702262321",
-                    description: "Senin-Jumat, 09.00-19.00",
-                  },
-                  {
-                    icon: Mail,
-                    text: "contact@nakastudio.com",
-                    href: "mailto:contact@nakastudio.com",
-                    description: "Balasan dalam 24 jam",
-                  },
-                  {
-                    icon: MapPin,
-                    text: "Kota Salatiga",
-                    onClick: openGoogleMaps,
-                    description: "Jawa Tengah, 50732",
-                  },
-                ].map((item, index) => (
-                  <motion.div
-                    key={index}
-                    whileHover={{ y: -2 }}
-                    className={`flex items-start gap-3 p-3 md:p-4 rounded-lg md:rounded-xl bg-white border hover:border-amber-300 transition-all cursor-pointer ${
-                      item.onClick ? "group hover:bg-amber-50" : ""
-                    }`}
-                    onClick={item.onClick}
-                  >
-                    <div className="p-2 md:p-2.5 rounded-md md:rounded-lg bg-amber-300/20 text-amber-700">
-                      <item.icon className="w-4 h-4 md:w-5 md:h-5" />
-                    </div>
-                    <div className="flex-1">
-                      {item.href ? (
-                        <a
-                          href={item.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-gray-800 text-sm md:text-base font-medium block hover:text-amber-600 transition-colors"
-                        >
-                          {item.text}
-                        </a>
-                      ) : (
-                        <span className="text-gray-800 text-sm md:text-base font-medium block group-hover:text-amber-600 transition-colors">
-                          {item.text}
-                        </span>
-                      )}
-                      <p className="text-gray-600 text-xs md:text-sm mt-0.5">
-                        {item.description}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
+  {
+    icon: Phone,
+    text: "+62 857-0226-2321",
+    href: "https://wa.me/+6285702262321",
+    description: "Senin-Jumat, 09.00-19.00",
+  },
+  {
+    icon: Mail,
+    text: "contact@nakastudio.com",
+    href: "mailto:contact@nakastudio.com",
+    description: "Balasan dalam 24 jam",
+  },
+  {
+    icon: MapPin,
+    text: "Kota Salatiga",
+    onClick: openGoogleMaps,
+    description: "Jawa Tengah, 50732",
+  },
+].map((item, index) => (
+  <motion.div
+    key={index}
+    whileHover={{ y: -2 }}
+    className={`flex items-start gap-3 p-3 md:p-4 rounded-lg md:rounded-xl bg-white border hover:border-amber-300 transition-all cursor-pointer ${
+      item.href || item.onClick ? "group hover:bg-amber-50" : ""
+    }`}
+    onClick={() => {
+      if (item.href) window.open(item.href, "_blank");
+      if (item.onClick) item.onClick();
+    }}
+  >
+    <div className="p-2 md:p-2.5 rounded-md md:rounded-lg bg-amber-300/20 text-amber-700">
+      <item.icon className="w-4 h-4 md:w-5 md:h-5" />
+    </div>
+    <div className="flex-1">
+      <span className="text-gray-800 text-sm md:text-base font-medium block group-hover:text-amber-600 transition-colors">
+        {item.text}
+      </span>
+      <p className="text-gray-600 text-xs md:text-sm mt-0.5">
+        {item.description}
+      </p>
+    </div>
+  </motion.div>
+))}
+
               </div>
             </div>
 
             {/* Office Hours */}
-            <div className="bg-white p-4 md:p-6 rounded-lg md:rounded-xl border shadow-sm">
-              <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-3 md:mb-4">
-                Jam Kerja
-              </h3>
+<div className="bg-white p-4 md:p-6 rounded-lg md:rounded-xl border shadow-sm">
+  <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-3 md:mb-4">
+    Email Customer Service
+  </h3>
 
-              <div className="space-y-2 md:space-y-3">
-                {[
-                  {
-                    days: "Senin - Jumat",
-                    time: "09.00 - 18.00 WIB",
-                    icon: Calendar,
-                  },
-                  {
-                    days: "Sabtu",
-                    time: "10.00 - 14.00 WIB",
-                    icon: Clock,
-                  },
-                  { days: "Minggu", time: "Tutup", icon: X, isClosed: true },
-                ].map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-3 py-2 md:py-2.5"
-                  >
-                    <div className="p-1.5 md:p-2 rounded-md md:rounded-lg bg-amber-300/20 text-amber-700">
-                      <item.icon className="w-3 h-3 md:w-4 md:h-4" />
-                    </div>
-                    <div className="flex-1 flex justify-between items-center">
-                      <span className="text-gray-800 text-sm md:text-base font-medium">
-                        {item.days}
-                      </span>
-                      <span
-                        className={`text-xs md:text-sm font-medium ${
-                          item.isClosed ? "text-red-400" : "text-gray-700"
-                        }`}
-                      >
-                        {item.time}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+  <div className="space-y-2 md:space-y-3">
+    {[
+      { days: "Senin - Jumat", time: "09.00 - 18.00 WIB", icon: Clock },
+      { days: "Sabtu", time: "10.00 - 14.00 WIB", icon: Clock },
+      { days: "Minggu", time: "09.00 - 12.00 WIB", icon: Clock }, // fleksibel
+    ].map((item, index) => (
+      <div key={index} className="flex items-center gap-3 py-2 md:py-2.5">
+        <div className="p-1.5 md:p-2 rounded-md md:rounded-lg bg-amber-300/20 text-amber-700">
+          <item.icon className="w-3 h-3 md:w-4 md:h-4" />
+        </div>
+        <div className="flex-1 flex justify-between items-center">
+          <span className="text-gray-800 text-sm md:text-base font-medium">
+            {item.days}
+          </span>
+          <span className="text-gray-700 text-xs md:text-sm font-medium">
+            {item.time}
+          </span>
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
+
           </motion.div>
 
           {/* Contact Form */}

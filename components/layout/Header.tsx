@@ -8,6 +8,7 @@ import Cart from '../cart/Cart'
 import LoginButton from './LoginButton'
 import { useSession } from 'next-auth/react'
 import TanstackQueryProvier from '../TanstackQueryProvier'
+import Image from 'next/image'
 
 export default function Header() {
   const session = useSession()
@@ -18,7 +19,16 @@ export default function Header() {
         <MobileMenu />
 
         <Link href='/' className='hidden md:block'>
-          <p className='text-2xl font-bold'>Nikhu Studio</p>
+          <div className='relative w-52 h-12'>
+  <Image
+    src='/nikhulogo.png'
+    alt='Nikhu Studio'
+    fill
+    className='object-contain'
+    priority
+  />
+</div>
+
         </Link>
       </div>
       <div className='hidden md:block'>

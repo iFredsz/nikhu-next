@@ -22,19 +22,11 @@ import 'swiper/css/pagination'
 import { db } from './firebase'
 import { collection, onSnapshot } from 'firebase/firestore'
 
-const heroImageUrls = [
-  '/products/classic-1.webp',
-  '/products/corsa-2.webp',
-  '/products/white-3.webp',
-  '/products/corte-1.webp',
-]
-
 const subtitles = [
   "Kreatif, Memukau, dan Tak Terlupakan",
   "Abadikan Momen Terbaikmu",
   "Fotografi Profesional dengan Sentuhan Artistik",
 ]
-
 interface Testimonial {
   message: string;
   name: string;
@@ -49,7 +41,6 @@ interface Portfolio {
 }
 
 export default function Home() {
-
 
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const testimonialTrackRef = useRef<HTMLDivElement>(null);
@@ -187,11 +178,12 @@ export default function Home() {
 
   return (
     <>
-     {/* Hero Section */}
-<section className="section-full-width grid grid-cols-1 items-center md:grid-cols-2 bg-[#f3f4f6]">
-  <div className="bg-[#f3f4f6] mx-auto mb-12 mt-8 flex max-w-[600px] flex-col items-center text-center md:m-0 md:max-w-none md:items-start md:text-left md:pr-[10%]">
-    <h1 className="mb-4 md:ml-8 text-2xl font-semibold">
-      Momentmu, Lensa Kami :)
+    {/* Hero Section */}
+<section className="section-full-width grid grid-cols-1 items-center md:grid-cols-2 md:mt-12 mt-16 md:mb-4 mb-16 overflow-hidden">
+  {/* Text */}
+  <div className="mx-auto mb-12 mt-8 flex max-w-[600px] flex-col items-center text-center md:m-0 md:max-w-none md:items-start md:text-left md:pr-[10%]">
+    <h1 className="mb-4 md:ml-10 md:text-3xl text-2xl font-bold text-gray-800">
+      Momentmu, Lensa Kami 🙂
     </h1>
 
     <AnimatePresence mode="wait">
@@ -201,27 +193,34 @@ export default function Home() {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
         transition={{ duration: 0.5 }}
-        className="mb-8 md:ml-8 text-base min-h-[60px] flex items-center justify-center md:justify-start"
+        className="mb-8 md:ml-10 text-md min-h-[60px] flex items-center justify-center md:justify-start text-gray-600 mt-4"
       >
         {subtitles[subtitleIndex]}
       </motion.p>
     </AnimatePresence>
 
-    <Button asChild className="md:ml-8 px-12">
+    <Button asChild className="md:ml-10 px-12 py-3">
       <Link href="/products">Booking Now</Link>
     </Button>
   </div>
 
-  <div className="relative">
-    <CarouselFade images={heroImageUrls} />
+  {/* Hero Image */}
+  <div className="relative w-full flex justify-center md:justify-end">
+    <motion.img
+      src="/fotografer.png"
+      alt="Fotografer"
+      className="max-w-[600px] w-full object-cover md:mr-10"
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      whileHover={{ scale: 1.05, rotate: 1 }}
+      transition={{ duration: 0.8, type: 'spring', stiffness: 100 }}
+    />
   </div>
 </section>
 
 
-     
-
       {/* Portfolio Section */}
-      <section className="section-full-width bg-[#f3f4f6] py-16 relative">
+      <section className="section-full-width py-16 relative">
         <div className="container mx-auto px-4">
           {portfolioImages.length > 0 && (
             <h2 className="text-3xl font-bold mb-12 text-center">Hasil Karya Kami</h2>
@@ -605,7 +604,7 @@ export default function Home() {
 
 
       {/* Newsletter */}
-      <section className="section-full-width bg-[#f3f4f6] py-8 md:py-16 text-center px-4">
+      <section className="section-full-width bg-gradient-to-b from-[#f3f4f6] to-white py-8 md:py-16 text-center px-4">
         <h2 className="text-2xl md:text-3xl font-bold mb-4">Dapatkan Tips Fotografi & Promo</h2>
         <p className="mb-4 md:mb-6 text-gray-700 text-sm md:text-base">Subscribe newsletter kami</p>
         <div className="flex justify-center gap-2 flex-wrap max-w-xs mx-auto">

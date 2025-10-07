@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { idrFormatter } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { db } from '@/app/firebase'
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, onSnapshot } from 'firebase/firestore'
 
 interface Product {
   id: string
@@ -22,22 +22,33 @@ export default function Page() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'products'))
-        const data = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Product[]
+    setLoading(true)
+
+    // 🔥 Realtime listener untuk products
+    const unsubscribe = onSnapshot(
+      collection(db, 'products'),
+      (snapshot) => {
+        const data = snapshot.docs.map((doc) => {
+          const d = doc.data()
+          return {
+            id: doc.id,
+            name: d.name || '',
+            slug: d.slug || '',
+            price: d.price || 0,
+            thumbnail: d.thumbnail || '',
+            hot: !!d.hot,
+          }
+        }) as Product[]
         setProducts(data)
-      } catch (error) {
-        console.error("Error fetching products:", error)
-      } finally {
+        setLoading(false)
+      },
+      (error) => {
+        console.error('Error fetching products:', error)
         setLoading(false)
       }
-    }
+    )
 
-    fetchProducts()
+    return () => unsubscribe()
   }, [])
 
   if (loading) {
@@ -46,39 +57,60 @@ export default function Page() {
 
   return (
     <>
-      <div className='flex gap-4 mt-5 mb-10 md:mt-0'>
-        <Link href='/'>Home</Link>
+      {/* Breadcrumb */}
+      <div className="flex gap-4 mt-5 mb-10 md:mt-0">
+        <Link href="/">Home</Link>
         <span>/</span>
-        <p className='text-gray-500'>Products</p>
+        <p className="text-gray-500">Package</p>
       </div>
-      <h2 className='mb-4 md:mb-8'>Products</h2>
 
-      <div className='grid grid-cols-2 gap-6 md:grid-cols-4'>
+      <h2 className="mb-4 md:mb-8 font-bold text-2xl">Package</h2>
+
+      {/* Product Grid */}
+      <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
         {products.map((product) => {
+          const discountRate = 0.2
+          const originalPrice = product.price / (1 - discountRate)
           const formattedPrice = idrFormatter(product.price)
+          const formattedOriginal = idrFormatter(originalPrice)
 
           return (
-            <div key={product.id}>
+            <div
+              key={product.id}
+              className="relative group rounded-xl overflow-hidden shadow-md bg-white hover:shadow-xl transition-all duration-300"
+            >
               <Link href={`/products/${product.slug}`}>
-                <div className='relative'>
+                <div className="relative">
                   <Image
                     src={product.thumbnail}
                     width={350}
                     height={350}
                     alt={product.name}
-                    className='mb-2 object-cover'
+                    className="object-cover w-full h-48 md:h-56 group-hover:scale-105 transition-transform duration-500"
                   />
                   {product.hot && (
-  <Badge className='absolute right-2 top-2 text-[8px] leading-normal lg:text-xs bg-red-500 text-white'>
-    HOT
-  </Badge>
-)}
+                    <Badge className="absolute right-2 top-2 text-[10px] font-semibold bg-red-500 text-white px-2 py-1 shadow-sm">
+                      🔥 HOT
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="p-3 text-center">
+                  <p className="mb-2 text-sm md:text-lg font-semibold text-gray-800 group-hover:text-red-600 transition-colors duration-300">
+                    {product.name}
+                  </p>
+
+                  {/* Harga */}
+                  <div className="flex justify-center items-center gap-2">
+                    <span className="text-gray-400 text-xs md:text-sm line-through">
+                      {formattedOriginal}
+                    </span>
+                    <span className="text-red-600 font-bold text-sm md:text-base">
+                      {formattedPrice}
+                    </span>
+                  </div>
 
                 </div>
-                <p className='mb-1 text-center text-sm lg:text-lg'>
-                  {product.name}
-                </p>
-                <p className='text-center text-xs lg:text-sm'>{formattedPrice}</p>
               </Link>
             </div>
           )

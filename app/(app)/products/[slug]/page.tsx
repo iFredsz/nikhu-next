@@ -392,7 +392,7 @@ export default function Page({ params }: { params: { slug: string } }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
         <nav className="mb-8">
@@ -405,7 +405,7 @@ export default function Page({ params }: { params: { slug: string } }) {
             <li className="flex items-center">
               <span className="mx-2">/</span>
               <Link href="/products" className="hover:text-indigo-600 transition-colors">
-                Products
+                Package
               </Link>
             </li>
             <li className="flex items-center">

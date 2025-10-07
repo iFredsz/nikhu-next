@@ -1,11 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { 
-  FaFacebookF, 
-  FaTiktok, 
-  FaInstagram,
-} from "react-icons/fa";
+import { FaTiktok, FaInstagram } from "react-icons/fa";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -21,26 +17,25 @@ const Footer = () => {
     }
   };
 
-  // Data sosial media dengan nama platform yang jelas
   const socialMedia = [
-    { 
-      icon: FaTiktok, 
-      href: "https://www.tiktok.com/@",
+    {
+      icon: FaTiktok,
+      href: "https://www.tiktok.com/@nikhu.studio",
       color: "hover:bg-black hover:text-white",
       bg: "bg-black",
-      name: "TikTok"
+      name: "TikTok",
     },
-    { 
-      icon: FaInstagram, 
-      href: "https://www.instagram.com/",
+    {
+      icon: FaInstagram,
+      href: "https://www.instagram.com/nikhustudio.id",
       color: "hover:bg-pink-600 hover:text-white",
       bg: "bg-gradient-to-r from-purple-500 to-pink-500",
-      name: "Instagram"
+      name: "Instagram",
     },
   ];
 
   return (
-    <footer className="footer-container pt-8 bg-white text-gray-800">
+    <footer className="footer-container pt-8 text-gray-800">
       {/* Bagian konten footer */}
       <div className="w-full">
         <div className="px-6 md:px-12 lg:px-20">
@@ -48,15 +43,25 @@ const Footer = () => {
             {/* Kolom 1: Logo dan Deskripsi */}
             <div className="space-y-4">
               <div
-                className="cursor-pointer flex items-center gap-2"
+                className="cursor-pointer flex items-center gap-3"
                 onClick={handleLogoClick}
               >
-                <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold">NS</span>
+                <div className="w-12 h-12 items-center justify-center overflow-hidden">
+                  <Image
+                    src="/logostudio.png"
+                    alt="Nikhu Studio"
+                    width={48}
+                    height={48}
+                    className="object-contain invert"
+                  />
                 </div>
                 <div>
-                  <h1 className="text-gray-800 text-xl font-semibold">NIKHU STUDIO</h1>
-                  <p className="text-gray-600 text-xs">More Than Just Pictures</p>
+                  <h1 className="text-gray-800 text-xl font-semibold">
+                    NIKHU STUDIO
+                  </h1>
+                  <p className="text-gray-600 text-xs">
+                    More Than Just Pictures
+                  </p>
                 </div>
               </div>
               <p className="text-gray-600">
@@ -66,7 +71,9 @@ const Footer = () => {
 
             {/* Kolom 3: Follow Us */}
             <div className="space-y-4 text-left md:text-right md:ml-auto order-last md:order-none">
-              <h4 className="text-lg font-semibold mb-2 text-gray-800">Follow Us</h4>
+              <h4 className="text-lg font-semibold mb-2 text-gray-800">
+                Follow Us
+              </h4>
               <div className="flex justify-start md:justify-end space-x-3">
                 {socialMedia.map((social, index) => (
                   <motion.a
@@ -90,11 +97,11 @@ const Footer = () => {
       </div>
 
       {/* Footer Copyright */}
-      <div className="bg-gray-100 pt-4 pb-4 w-full">
+      <div className="bg-gray-700 pt-4 pb-4 w-full">
         <div className="px-6 md:px-12 lg:px-20">
           <div className="flex justify-center items-center w-full">
-            <p className="text-center text-sm text-gray-600">
-              © {new Date().getFullYear()} Naka Studio. All rights reserved.
+            <p className="text-center text-sm text-white">
+              © {new Date().getFullYear()} Nikhu Studio. All rights reserved.
             </p>
           </div>
         </div>

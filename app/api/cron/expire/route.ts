@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/firebase'
-import { collectionGroup, getDocs, updateDoc, doc } from 'firebase/firestore'
+import { collectionGroup, getDocs, updateDoc } from 'firebase/firestore'
 
-export async function GET() {
+export async function POST() {
   try {
     const now = new Date()
     let expiredCount = 0

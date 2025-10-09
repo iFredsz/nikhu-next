@@ -9,13 +9,15 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import LoadingText from '@/components/LoadingText'
+import { Eye, EyeOff } from 'lucide-react'
+import { toast, Toaster } from 'sonner'
 
 export default function Page() {
   const router = useRouter()
   const [checkingAuth, setCheckingAuth] = useState(true)
-  const [errorStatus, setErrorStatus] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [loginData, setLoginData] = useState({ email: '', password: '' })
+  const [showPassword, setShowPassword] = useState(false)
 
   // ⛔ Cegah render /login kalau sudah login
   useEffect(() => {
@@ -23,7 +25,7 @@ export default function Page() {
       if (user) {
         router.replace('/')
       } else {
-        setCheckingAuth(false) // baru tampil kalau belum login
+        setCheckingAuth(false)
       }
     })
     return () => unsub()
@@ -32,7 +34,7 @@ export default function Page() {
   const handleLogin: FormEventHandler = async (e) => {
     e.preventDefault()
     setIsLoading(true)
-    setErrorStatus('')
+
     try {
       await signInWithEmailAndPassword(auth, loginData.email, loginData.password)
       await signIn('credentials', {
@@ -40,10 +42,11 @@ export default function Page() {
         password: loginData.password,
         redirect: false,
       })
+      toast.success('Login berhasil!')
       router.replace('/')
     } catch (error: any) {
       setIsLoading(false)
-      setErrorStatus(
+      toast.error(
         error.code === 'auth/invalid-credential'
           ? 'Email dan password salah. Coba lagi.'
           : error.code
@@ -51,11 +54,11 @@ export default function Page() {
     }
   }
 
-  // 🔒 Jangan tampilkan UI sebelum auth dicek
   if (checkingAuth) return null
 
   return (
     <div className='mx-auto mt-20 max-w-md'>
+      <Toaster />
       <section className='mb-10 flex flex-col items-center'>
         <h2>Log in to your account</h2>
       </section>
@@ -87,21 +90,27 @@ export default function Page() {
                 Forgot password?
               </Link>
             </div>
-            <Input
-              type='password'
-              id='password'
-              placeholder='Password'
-              required
-              value={loginData.password}
-              onChange={(e) =>
-                setLoginData((prev) => ({ ...prev, password: e.target.value }))
-              }
-            />
+            <div className='relative'>
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                id='password'
+                placeholder='Password'
+                required
+                value={loginData.password}
+                onChange={(e) =>
+                  setLoginData((prev) => ({ ...prev, password: e.target.value }))
+                }
+              />
+              <button
+                type='button'
+                className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700'
+                onClick={() => setShowPassword((prev) => !prev)}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
-          {errorStatus && (
-            <p className='mb-4 text-center text-destructive'>{errorStatus}</p>
-          )}
           <Button
             className='w-full'
             disabled={isLoading || !loginData.email || !loginData.password}

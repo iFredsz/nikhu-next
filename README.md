@@ -13,6 +13,8 @@ A simple booking with Next JS, Zustand, Shadcn UI, Firebase (Auth & Firestore), 
 - [Firebase Auth](https://firebase.google.com/docs/auth)
 - [Firestore](https://firebase.google.com/docs/firestore)
 - [Midtrans](https://midtrans.com/)
+- [Cron-job.org](https://cron-job.org/)
+- [EmailJS](https://www.emailjs.com/)
 
 ## Features
 

@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/pages/api/auth/[...nextauth]'
-import { adminDb } from '@/app/firebase-admin'
+import { adminDb } from '@/lib/firebase-admin'
 import { NextResponse } from 'next/server'
 
 export async function GET() {

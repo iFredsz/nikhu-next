@@ -1,4 +1,4 @@
-import { auth } from '@/app/firebase'
+import { auth } from '@/lib/firebase'
 import { signOut as signOutFirebase } from 'firebase/auth'
 import { signOut } from 'next-auth/react'
 

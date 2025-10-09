@@ -19,7 +19,7 @@ import 'swiper/css/navigation'
 import 'swiper/css/pagination'
 
 // Firebase
-import { db } from './firebase'
+import { db } from '../lib/firebase'
 import { collection, onSnapshot } from 'firebase/firestore'
 
 const subtitles = [
@@ -280,22 +280,22 @@ export default function Home() {
                 className="px-2"
               >
                 {portfolioImages.map((img) => (
-                  <SwiperSlide key={img.id}>
-                    <div 
-                      className="cursor-pointer"
-                      onClick={() => setSelectedImg(img.url)}
-                    >
-                      <div className="relative w-full h-64 sm:h-80 md:h-96 overflow-hidden rounded-2xl shadow-lg">
-                        <Image
-                          src={img.url}
-                          alt={img.title || "Portfolio"}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        />
-                      </div>
-                    </div>
-                  </SwiperSlide>
+                 <SwiperSlide key={img.id}>
+  <div 
+    className="cursor-pointer"
+    onClick={() => setSelectedImg(img.url)}
+  >
+    <div className="relative w-full h-72 sm:h-80 md:h-96 lg:h-[500px] overflow-hidden rounded-xl md:rounded-2xl shadow-lg">
+      <Image
+        src={img.url}
+        alt={img.title || "Portfolio"}
+        fill
+        className="object-cover"
+        sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+      />
+    </div>
+  </div>
+</SwiperSlide>
                 ))}
               </Swiper>
             </div>
@@ -370,7 +370,7 @@ export default function Home() {
           </h2>
           <p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto">
             Nikmati layanan fotografi profesional mulai dari{" "}
-            <span className="font-bold text-yellow-300">Rp 50.000</span>! Cocok untuk pre-wedding, family, portrait, dan semua momen spesialmu.
+            <span className="font-bold text-yellow-300">Rp 30.000</span>! Cocok untuk pre-wedding, family, portrait, dan semua momen spesialmu.
           </p>
 
           <Link href="/products">

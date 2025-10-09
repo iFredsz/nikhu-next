@@ -1,7 +1,7 @@
 'use server'
 
 import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore'
-import { db } from '@/app/firebase'
+import { db } from '@/lib/firebase'
 
 export type Product = {
   id: string

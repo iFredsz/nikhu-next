@@ -1,41 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminDb } from '@/app/firebase-admin'
+import { adminDb } from '@/lib/firebase-admin'
 import { ExtendedCartItems } from '@/components/cart/Cart'
+
+interface ConflictBooking {
+  date: string
+  times: string[]
+  productName?: string
+}
+
+interface AvailabilityResponse {
+  available: boolean
+  conflictingBookings?: ConflictBooking[]
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { cartItems } = body as { cartItems: ExtendedCartItems[] }
 
-    console.log('Received cart items:', cartItems)
+    console.log('=== AVAILABILITY CHECK START ===')
+    console.log('Received cart items count:', cartItems?.length || 0)
 
     if (!cartItems || cartItems.length === 0) {
+      console.log('No cart items, returning available')
       return NextResponse.json({ available: true })
     }
 
-    // Validate cart items structure
-    const validCartItems = cartItems.filter(item => 
-      item && typeof item === 'object' && item.date && item.times
+    // Validate cart items structure dengan type guard
+    const validCartItems = cartItems.filter((item): item is ExtendedCartItems & { date: string; times: string[] } => 
+      !!item && 
+      typeof item === 'object' && 
+      !!item.date && 
+      !!item.times &&
+      Array.isArray(item.times) &&
+      item.times.length > 0
     )
 
+    console.log('Valid cart items count:', validCartItems.length)
+
     if (validCartItems.length === 0) {
+      console.log('No valid cart items, returning available')
       return NextResponse.json({ available: true })
     }
 
-    const conflictingBookings: Array<{date: string, times: string[], productName?: string}> = []
+    const conflictingBookings: ConflictBooking[] = []
 
     // Get all users
     const usersSnapshot = await adminDb.collection('users').get()
     
-    console.log(`Found ${usersSnapshot.size} users`)
+    console.log(`Found ${usersSnapshot.size} users to check`)
 
     // Check each cart item against existing orders from all users
     for (const cartItem of validCartItems) {
-      if (!cartItem.date || !cartItem.times || cartItem.times.length === 0) {
-        continue
-      }
-
-      console.log(`Checking cart item: ${cartItem.name} on ${cartItem.date} at ${cartItem.times.join(', ')}`)
+      console.log(`\nChecking cart item: ${cartItem.name} on ${cartItem.date} at ${cartItem.times.join(', ')}`)
 
       // Check orders for each user
       for (const userDoc of usersSnapshot.docs) {
@@ -47,6 +64,8 @@ export async function POST(request: NextRequest) {
             .where('payment_status', '==', 'success')
             .get()
 
+          console.log(`Checking user ${userDoc.id}, found ${ordersSnapshot.size} successful orders`)
+
           for (const orderDoc of ordersSnapshot.docs) {
             const orderData = orderDoc.data()
             
@@ -54,7 +73,7 @@ export async function POST(request: NextRequest) {
             if (orderData.original_cart_items && Array.isArray(orderData.original_cart_items)) {
               for (const orderItem of orderData.original_cart_items) {
                 // Skip if order item doesn't have required properties
-                if (!orderItem || !orderItem.date || !orderItem.times) {
+                if (!orderItem || !orderItem.date || !orderItem.times || !Array.isArray(orderItem.times)) {
                   continue
                 }
 
@@ -64,15 +83,15 @@ export async function POST(request: NextRequest) {
                 console.log(`Found order with same date: ${orderItem.date}`)
 
                 // Check for time conflicts
-                const orderTimes: string[] = Array.isArray(orderItem.times) ? orderItem.times : []
-                const cartTimes: string[] = Array.isArray(cartItem.times) ? cartItem.times : []
+                const orderTimes: string[] = orderItem.times
+                const cartTimes: string[] = cartItem.times
                 
                 const timeConflicts = orderTimes.filter((time: string) => 
                   cartTimes.includes(time)
                 )
                 
                 if (timeConflicts.length > 0) {
-                  console.log(`Time conflicts found: ${timeConflicts.join(', ')}`)
+                  console.log(`⛔ TIME CONFLICT FOUND: ${timeConflicts.join(', ')}`)
                   conflictingBookings.push({
                     date: cartItem.date,
                     times: timeConflicts,
@@ -93,7 +112,7 @@ export async function POST(request: NextRequest) {
     const uniqueConflicts = conflictingBookings.filter((conflict, index, self) => 
       index === self.findIndex(c => 
         c.date === conflict.date && 
-        c.times.join() === conflict.times.join() &&
+        JSON.stringify(c.times.sort()) === JSON.stringify(conflict.times.sort()) &&
         c.productName === conflict.productName
       )
     )
@@ -102,15 +121,17 @@ export async function POST(request: NextRequest) {
 
     // If there are conflicting bookings, return false
     if (uniqueConflicts.length > 0) {
+      console.log('=== AVAILABILITY CHECK END: NOT AVAILABLE ===')
       return NextResponse.json({ 
         available: false, 
         conflictingBookings: uniqueConflicts
       })
     }
 
+    console.log('=== AVAILABILITY CHECK END: AVAILABLE ===')
     return NextResponse.json({ available: true })
   } catch (error) {
-    console.error('Error in check-booking-availability:', error)
+    console.error('❌ Error in check-booking-availability:', error)
     return NextResponse.json(
       { 
         error: 'Internal server error',

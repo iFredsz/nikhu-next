@@ -1,4 +1,4 @@
-import { db } from "@/app/firebase"
+import { db } from "@/lib/firebase"
 import { doc, updateDoc } from "firebase/firestore"
 
 export async function UpdateOrder(uid: string, orderId: string, data: any) {

@@ -20,16 +20,15 @@ export default function ProfileLayoutClient({
   const orderDetailsPage = isOrderDetails(urlSplit)
 
   return (
-    <div className='flex flex-col gap-5 md:flex-row md:gap-10'>
-      {/* Sidebar Navigation */}
+    <div className='flex flex-col gap-5 md:flex-row md:gap-6'>
+      {/* Sidebar Navigation - Auto width based on content */}
       <div
         className={cn(
-          'flex-1 md:max-w-[200px]',
+          'w-full md:w-auto md:flex-shrink-0',
           orderDetailsPage ? 'hidden md:block' : ''
         )}
       >
-        <h4 className='mb-2 hidden md:block'>Menu</h4>
-        {/* 🔥 Kirim role ke ProfileNav */}
+        
         <ProfileNav userRole={initialRole} />
       </div>
 
@@ -38,7 +37,7 @@ export default function ProfileLayoutClient({
       />
 
       {/* Main Content */}
-      <div className='flex-1'>
+      <div className='flex-1 min-w-0'>
         <TanstackQueryProvier>{children}</TanstackQueryProvier>
       </div>
     </div>

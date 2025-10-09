@@ -1,6 +1,6 @@
 'use client'
 
-import { auth } from '@/app/firebase'
+import { auth } from '@/lib/firebase'
 import LoadingText from '@/components/LoadingText'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

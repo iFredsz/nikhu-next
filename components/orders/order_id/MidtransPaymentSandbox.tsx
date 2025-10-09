@@ -44,7 +44,7 @@ export default function MidtransPayment(props: Props) {
   useLayoutEffect(() => {
     // inject Midtrans Snap script
     const script = document.createElement('script')
-    script.src = 'https://app.midtrans.com/snap/snap.js'
+    script.src = 'https://app.sandbox.midtrans.com/snap/snap.js'
     script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT as string)
     document.body.appendChild(script)
 
@@ -62,19 +62,31 @@ export default function MidtransPayment(props: Props) {
       )}
       {isOpen && (
         <>
-          <p className="mt-8 text-center text-lg">
-  Please <strong>complete your payment using the available options below.</strong>
-</p>
-<p className="mb-8 mt-4 text-center text-lg">
-  Thank you for using our service.
-</p>
-
+          <p className='mt-8 text-center'>
+            You can simply <strong>simulate the payment using the tools below the Midtrans section.</strong>
+          </p>
+          <p className='mb-8 mt-4 text-center'>
+            Anyway, hey, thank you for checking my app out! ^^
+          </p>
         </>
       )}
 
       <div id='snap-container' className={`w-full ${isOpen ? 'border' : ''}`}></div>
 
-     
+      {isOpen && (
+        <>
+          <Separator className='my-8' />
+          <p className='mb-4 text-center font-bold'>Copy the VA number above ☝</p>
+          <p className='mb-4 text-center font-bold'>Simulate the payment here 👇</p>
+          <div className='-mb-28 overflow-hidden'>
+            <iframe
+              src='https://simulator.sandbox.midtrans.com/bca/va/index'
+              title='Midtrans Payment Mock Simulator'
+              className='relative -top-28 mx-auto h-[500px] w-full max-w-[700px]'
+            ></iframe>
+          </div>
+        </>
+      )}
     </>
   )
 }

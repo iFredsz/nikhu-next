@@ -3,7 +3,7 @@
 import NextAuth, { AuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { signInWithEmailAndPassword } from 'firebase/auth'
-import { auth, db } from '@/app/firebase' // Pastikan db sudah di-import
+import { auth, db } from '@/lib/firebase' // Pastikan db sudah di-import
 import { doc, getDoc } from 'firebase/firestore'
 
 export const authOptions: AuthOptions = {

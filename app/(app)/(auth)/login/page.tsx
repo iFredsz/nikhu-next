@@ -1,58 +1,58 @@
 'use client'
 
-import { auth } from '@/app/firebase'
+import { auth } from '@/lib/firebase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { signInWithEmailAndPassword } from 'firebase/auth'
-import { FormEventHandler, useState } from 'react'
+import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth'
+import { FormEventHandler, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
-import LoadingSpinner from '@/components/LoadingSpinner'
 import LoadingText from '@/components/LoadingText'
 
 export default function Page() {
+  const router = useRouter()
+  const [checkingAuth, setCheckingAuth] = useState(true)
   const [errorStatus, setErrorStatus] = useState('')
-  const [success, setSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [loginData, setLoginData] = useState({
-    email: '',
-    password: '',
-  })
+  const [loginData, setLoginData] = useState({ email: '', password: '' })
 
-  const handleLogin: FormEventHandler = (e) => {
+  // ⛔ Cegah render /login kalau sudah login
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.replace('/')
+      } else {
+        setCheckingAuth(false) // baru tampil kalau belum login
+      }
+    })
+    return () => unsub()
+  }, [router])
+
+  const handleLogin: FormEventHandler = async (e) => {
     e.preventDefault()
-
     setIsLoading(true)
-    signInWithEmailAndPassword(auth, loginData.email, loginData.password)
-      .then((response) => {
-        // executed if sign in was successful
-        // console.log(response.user)
-        // reset all the state
-        setIsLoading(false)
-        setErrorStatus('')
-        setSuccess(true)
-        setLoginData({
-          email: '',
-          password: '',
-        })
-
-        // login with next auth
-        signIn('credentials', {
-          email: loginData.email,
-          password: loginData.password,
-          redirect: true,
-          callbackUrl: '/',
-        })
+    setErrorStatus('')
+    try {
+      await signInWithEmailAndPassword(auth, loginData.email, loginData.password)
+      await signIn('credentials', {
+        email: loginData.email,
+        password: loginData.password,
+        redirect: false,
       })
-      .catch((error) => {
-        // executed if sign in was not successful
-        // console.log(error)
-        setIsLoading(false)
-        error.code == 'auth/invalid-credential'
-          ? setErrorStatus('The email and password did not match. Please try again.')
-          : setErrorStatus(error.code)
-      })
+      router.replace('/')
+    } catch (error: any) {
+      setIsLoading(false)
+      setErrorStatus(
+        error.code === 'auth/invalid-credential'
+          ? 'Email dan password salah. Coba lagi.'
+          : error.code
+      )
+    }
   }
+
+  // 🔒 Jangan tampilkan UI sebelum auth dicek
+  if (checkingAuth) return null
 
   return (
     <div className='mx-auto mt-20 max-w-md'>
@@ -72,10 +72,9 @@ export default function Page() {
               placeholder='Email'
               required
               value={loginData.email}
-              onChange={(e) => {
-                setErrorStatus('')
+              onChange={(e) =>
                 setLoginData((prev) => ({ ...prev, email: e.target.value }))
-              }}
+              }
             />
           </div>
 
@@ -94,28 +93,20 @@ export default function Page() {
               placeholder='Password'
               required
               value={loginData.password}
-              onChange={(e) => {
-                setErrorStatus('')
+              onChange={(e) =>
                 setLoginData((prev) => ({ ...prev, password: e.target.value }))
-              }}
+              }
             />
           </div>
 
-          {errorStatus && <p className='mb-4 text-center text-destructive'>{errorStatus}</p>}
-          {success && (
-            <p className='mb-4 text-center'>
-              Log in succeeded! Redirecting you to the home page...
-            </p>
+          {errorStatus && (
+            <p className='mb-4 text-center text-destructive'>{errorStatus}</p>
           )}
           <Button
             className='w-full'
-            disabled={isLoading || loginData.email == '' || loginData.password == ''}
+            disabled={isLoading || !loginData.email || !loginData.password}
           >
-            {isLoading ? (
-              <LoadingText />
-            ) : (
-              'Log in'
-            )}
+            {isLoading ? <LoadingText /> : 'Log in'}
           </Button>
         </form>
 

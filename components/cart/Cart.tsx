@@ -38,13 +38,17 @@ export type ExtendedCartItems = {
   voucherDiscount?: number
   customerName?: string
   customerWa?: string
-  // Tambah properti lain jika perlu
-  // Contoh: voucherDiscount, customerName,
+}
 
+// Type untuk valid cart items
+type ValidCartItem = ExtendedCartItems & {
+  date: string
+  times: string[]
 }
 
 type CartItems = {
   items: ExtendedCartItems[]
+  validItems: ValidCartItem[]
   total_quantity: number
   total_price: number
 }
@@ -55,6 +59,7 @@ export default function CartButtonServer() {
   const [isFetching, setIsFetching] = useState(false)
   const [cartItems, setCartItems] = useState<CartItems>({
     items: [],
+    validItems: [],
     total_quantity: 0,
     total_price: 0,
   })
@@ -65,14 +70,25 @@ export default function CartButtonServer() {
   useEffect(() => {
     const items = (cartItemsStore ?? []) as ExtendedCartItems[]
 
+    // Validasi dan filter items yang memiliki data lengkap
+    const validItems = items.filter((item): item is ValidCartItem => 
+      !!item && 
+      !!item.id && 
+      !!item.date && 
+      !!item.times && 
+      Array.isArray(item.times) && 
+      item.times.length > 0
+    )
+
     // Total quantity adalah jumlah booking (bukan jumlah sesi)
-    const total_quantity = items.length
+    const total_quantity = validItems.length
 
     // Gunakan total yang sudah dihitung dari booking page
-    const total_price = items.reduce((sum, item) => sum + (item.total ?? 0), 0)
+    const total_price = validItems.reduce((sum, item) => sum + (item.total ?? 0), 0)
 
     setCartItems({
       items,
+      validItems,
       total_quantity,
       total_price,
     })
@@ -118,6 +134,7 @@ export default function CartButtonServer() {
                 isFetching={isFetching}
                 handleIsFetching={handleIsFetching}
                 handleSheetClose={handleClose}
+                cartItems={cartItems.validItems} // Hanya kirim valid items ke checkout
               />
             </div>
           </div>

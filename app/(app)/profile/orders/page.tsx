@@ -6,7 +6,7 @@ export default async function Page() {
 
   return (
     <>
-
+      <h1 className='text-2xl mt-4 mb-4'>My Orders</h1>
       <OrdersContainer uid={uid} />
     </>
   )

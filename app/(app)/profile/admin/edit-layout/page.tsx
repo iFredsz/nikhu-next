@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { db } from "@/app/firebase";
+import { db } from "@/lib/firebase";
 import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc } from "firebase/firestore";
 import { Loader2, Edit2, Check, Trash2, User } from "lucide-react";
 import Image from "next/image";

@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDocs } from 'firebase/firestore';
-import { db } from '@/app/firebase';
-import { Loader2, Edit2, Check, Search, ChevronDown, ChevronUp, X, Users, Download } from 'lucide-react';
+import { db } from '@/lib/firebase';
+import { Loader2, Edit2, Check, Search, ChevronDown, ChevronUp, X } from 'lucide-react';
 import React from 'react';
 import DownloadReceipt from './DownloadReceipt';
 import { toast } from 'sonner';
@@ -79,14 +79,11 @@ const OrdersFull = () => {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [isClient, setIsClient] = useState(false);
 
-  // Set isClient to true when component mounts on client
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Fetch semua orders dari semua users dengan real-time updates (tanpa composite index)
   useEffect(() => {
-    // Only run on client side
     if (!isClient) return;
 
     let mounted = true;
@@ -96,37 +93,27 @@ const OrdersFull = () => {
       try {
         setLoading(true);
         
-        // Ambil semua users terlebih dahulu
         const usersRef = collection(db, 'users');
         const usersSnapshot = await getDocs(usersRef);
         
         if (!mounted) return;
-
-        const allOrders: Order[] = [];
         
-        // Untuk setiap user, setup real-time listener untuk semua orders
         for (const userDoc of usersSnapshot.docs) {
           const userId = userDoc.id;
           const ordersRef = collection(db, 'users', userId, 'orders');
-          // Hanya orderBy saja tanpa where filter untuk menghindari composite index
           const ordersQuery = query(ordersRef, orderBy('created_at', 'desc'));
           
-          // Setup real-time listener untuk setiap user's orders
           const userUnsubscribe = onSnapshot(ordersQuery, 
             (ordersSnapshot) => {
               if (!mounted) return;
 
               setOrders(prevOrders => {
-                // Hapus orders lama untuk user ini
                 const filteredOrders = prevOrders.filter(order => order.uid !== userId);
-                
-                // Tambahkan orders baru untuk user ini (hanya yang success)
                 const newOrdersForUser: Order[] = [];
                 
                 ordersSnapshot.forEach(doc => {
                   const data = doc.data();
                   
-                  // Filter hanya orders dengan payment_status success di client side
                   if (data.payment_status === 'success') {
                     const order: Order = {
                       id: doc.id,
@@ -154,7 +141,6 @@ const OrdersFull = () => {
                   }
                 });
                 
-                // Gabungkan dan urutkan semua orders
                 const updatedOrders = [...filteredOrders, ...newOrdersForUser];
                 updatedOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                 
@@ -169,7 +155,6 @@ const OrdersFull = () => {
           
           unsubscribeFunctions.push(userUnsubscribe);
 
-          // Juga ambil data awal untuk user ini
           try {
             const initialOrdersSnapshot = await getDocs(ordersQuery);
             if (!mounted) return;
@@ -178,7 +163,6 @@ const OrdersFull = () => {
             initialOrdersSnapshot.forEach(doc => {
               const data = doc.data();
               
-              // Filter hanya orders dengan payment_status success
               if (data.payment_status === 'success') {
                 const order: Order = {
                   id: doc.id,
@@ -229,7 +213,6 @@ const OrdersFull = () => {
 
     fetchAllOrdersRealTime();
 
-    // Cleanup function
     return () => {
       mounted = false;
       unsubscribeFunctions.forEach(fn => fn());
@@ -316,7 +299,6 @@ const OrdersFull = () => {
     }).format(amount);
   };
 
-  // Filter orders di client side (tanpa composite index)
   const filteredOrders = orders.filter(order =>
     (order.order_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -344,7 +326,6 @@ const OrdersFull = () => {
     return mainItem?.date || order.date || '-';
   };
 
-  // Show loading state during SSR and initial client render
   if (!isClient) {
     return (
       <div className="container mx-auto px-4 py-6">
@@ -399,14 +380,13 @@ const OrdersFull = () => {
                   <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Product</th>
                   <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Amount</th>
                   <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Date</th>
                   <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500 text-sm">
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500 text-sm">
                       {searchTerm ? 'No orders found matching your search' : 'No successful orders found'}
                     </td>
                   </tr>
@@ -443,19 +423,24 @@ const OrdersFull = () => {
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="max-w-[200px]">
+                            <div className="max-w-[250px]">
                               <div className="font-medium text-gray-900 truncate" title={mainProduct?.name}>
                                 {mainProduct?.name || 'N/A'}
                               </div>
                               <div className="flex flex-wrap gap-2 mt-1">
                                 {mainProduct?.quantity && mainProduct.quantity > 1 && (
-                                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">Qty: {mainProduct.quantity}</span>
+                                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">Qty: {mainProduct.quantity}</span>
                                 )}
                                 {mainProduct?.people && (
-                                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">People: {mainProduct.people}</span>
+                                  <span className="text-xs text-gray-500 bg-blue-50 px-2 py-0.5 rounded flex items-center gap-1">
+                                    👥 {mainProduct.people}
+                                  </span>
                                 )}
                                 {bookingDate && bookingDate !== '-' && (
-                                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">Book: {bookingDate}</span>
+                                  <span className="text-xs text-gray-500 bg-purple-50 px-2 py-0.5 rounded">📅 {bookingDate}</span>
+                                )}
+                                {sessions.length > 0 && (
+                                  <span className="text-xs text-gray-500 bg-green-50 px-2 py-0.5 rounded">⏰ {sessions.length} sesi</span>
                                 )}
                               </div>
                             </div>
@@ -485,9 +470,6 @@ const OrdersFull = () => {
                                 {order.payment_status}
                               </span>
                             )}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {formatDate(order.created_at)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <div className="flex gap-2">
@@ -529,7 +511,7 @@ const OrdersFull = () => {
                         {/* Expanded row */}
                         {expandedRows[order.id] && (
                           <tr className="bg-gray-50">
-                            <td colSpan={7} className="px-4 py-4">
+                            <td colSpan={6} className="px-4 py-4">
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-sm p-4">
                                 {/* Order Details */}
                                 <div className="space-y-4">
@@ -686,8 +668,6 @@ const OrdersFull = () => {
                                   )}
                                 </div>
                               </div>
-
-                              
                             </td>
                           </tr>
                         )}

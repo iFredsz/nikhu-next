@@ -6,13 +6,13 @@ import Link from 'next/link'
 import { idrFormatter } from '@/lib/utils'
 import useCartStore from '@/store/cart-store'
 import { toast } from 'sonner'
-import { db } from '@/app/firebase'
-import { collection, query, where, getDocs, onSnapshot, doc } from 'firebase/firestore'
-import { useEffect, useState, useCallback } from 'react'
+import { db } from '@/lib/firebase'
+import { collection, query, where, collectionGroup, onSnapshot } from 'firebase/firestore'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import Image from 'next/image'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 
 type Product = {
   id: string
@@ -55,6 +55,8 @@ const times = [
   "20:00","20:30"
 ]
 
+const BREAK_TIMES = ["12:30", "18:30"]
+
 export default function Page({ params }: { params: { slug: string } }) {
   const { slug } = params
   const [productData, setProductData] = useState<Product | null>(null)
@@ -77,20 +79,17 @@ export default function Page({ params }: { params: { slug: string } }) {
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
 
-  // Realtime listener untuk produk
+  // Realtime listener untuk produk, addons, dan vouchers
   useEffect(() => {
-    let unsubscribeProduct: () => void
-    let unsubscribeAddons: () => void
-    let unsubscribeVouchers: () => void
+    const unsubscribers: (() => void)[] = []
 
-    const setupRealtimeListeners = async () => {
+    const setupListeners = async () => {
       try {
-        // Realtime listener untuk produk
+        // Product listener
         const productsQuery = query(collection(db, 'products'), where('slug', '==', slug))
-        
-        unsubscribeProduct = onSnapshot(productsQuery, (querySnapshot) => {
-          if (!querySnapshot.empty) {
-            const docSnap = querySnapshot.docs[0]
+        const unsubProduct = onSnapshot(productsQuery, (snapshot) => {
+          if (!snapshot.empty) {
+            const docSnap = snapshot.docs[0]
             const data = docSnap.data()
             setProductData({
               id: docSnap.id,
@@ -105,10 +104,14 @@ export default function Page({ params }: { params: { slug: string } }) {
             setProductData(null)
           }
           setLoading(false)
+        }, (error) => {
+          console.error('Error listening to product:', error)
+          setLoading(false)
         })
+        unsubscribers.push(unsubProduct)
 
-        // Realtime listener untuk addons
-        unsubscribeAddons = onSnapshot(collection(db, 'addons'), (snapshot) => {
+        // Addons listener
+        const unsubAddons = onSnapshot(collection(db, 'addons'), (snapshot) => {
           const addonsData = snapshot.docs.map(doc => ({
             id: doc.id,
             name: doc.data().name || 'Addon',
@@ -118,10 +121,13 @@ export default function Page({ params }: { params: { slug: string } }) {
             selectedSessions: {}
           }))
           setAddons(addonsData)
+        }, (error) => {
+          console.error('Error listening to addons:', error)
         })
+        unsubscribers.push(unsubAddons)
 
-        // Realtime listener untuk vouchers
-        unsubscribeVouchers = onSnapshot(collection(db, 'vouchers'), (snapshot) => {
+        // Vouchers listener
+        const unsubVouchers = onSnapshot(collection(db, 'vouchers'), (snapshot) => {
           const vouchersData = snapshot.docs.map(doc => ({
             code: doc.data().code,
             amount: Number(doc.data().amount) || 0,
@@ -130,73 +136,71 @@ export default function Page({ params }: { params: { slug: string } }) {
             currentUsage: Number(doc.data().currentUsage) || 0
           }))
           setVoucherList(vouchersData)
+        }, (error) => {
+          console.error('Error listening to vouchers:', error)
         })
+        unsubscribers.push(unsubVouchers)
 
       } catch (error) {
-        console.error('Error setting up realtime listeners:', error)
+        console.error('Error setting up listeners:', error)
         setLoading(false)
       }
     }
 
-    setupRealtimeListeners()
+    setupListeners()
 
-    // Cleanup function
     return () => {
-      if (unsubscribeProduct) unsubscribeProduct()
-      if (unsubscribeAddons) unsubscribeAddons()
-      if (unsubscribeVouchers) unsubscribeVouchers()
+      unsubscribers.forEach(unsub => unsub())
     }
   }, [slug])
 
-  // Realtime listener untuk booked sessions
+  // Realtime listener untuk booked sessions menggunakan collectionGroup
   useEffect(() => {
-    let unsubscribeUsers: () => void
+    let unsubscribe: (() => void) | undefined
 
-    const setupBookedSessionsListener = async () => {
+    const setupBookedSessionsListener = () => {
       try {
-        // Listen untuk perubahan di collection users
-        unsubscribeUsers = onSnapshot(collection(db, 'users'), async (usersSnapshot) => {
-          const allBookedSessions: BookedSession[] = []
+        // Menggunakan collectionGroup untuk mendengarkan semua orders dari semua users
+        const ordersQuery = collectionGroup(db, 'orders')
+        
+        unsubscribe = onSnapshot(ordersQuery, (snapshot) => {
+          const sessionsMap = new Map<string, Set<string>>()
 
-          // Untuk setiap user, listen orders mereka
-          for (const userDoc of usersSnapshot.docs) {
-            const ordersRef = collection(db, 'users', userDoc.id, 'orders')
+          snapshot.docs.forEach(orderDoc => {
+            const orderData = orderDoc.data()
             
-            // Setup listener untuk orders setiap user
-            onSnapshot(ordersRef, (ordersSnapshot) => {
-              ordersSnapshot.forEach(orderDoc => {
-                const orderData = orderDoc.data()
-                if (orderData.payment_status === 'success' && 
-                    orderData.original_cart_items && 
-                    orderData.original_cart_items.length > 0) {
+            // Hanya proses order dengan payment_status success
+            if (orderData.payment_status === 'success' && 
+                orderData.original_cart_items && 
+                Array.isArray(orderData.original_cart_items)) {
+              
+              orderData.original_cart_items.forEach((cartItem: any) => {
+                if (cartItem.date && cartItem.times && Array.isArray(cartItem.times)) {
+                  const dateKey = cartItem.date
                   
-                  const cartItem = orderData.original_cart_items[0]
-                  if (cartItem.date && cartItem.times && Array.isArray(cartItem.times)) {
-                    // Cek apakah session sudah ada di array
-                    const existingSessionIndex = allBookedSessions.findIndex(
-                      session => session.date === cartItem.date
-                    )
-                    
-                    if (existingSessionIndex !== -1) {
-                      // Merge times jika date sudah ada
-                      const existingTimes = allBookedSessions[existingSessionIndex].times
-                      const newTimes = Array.from(new Set([...existingTimes, ...cartItem.times]))
-                      allBookedSessions[existingSessionIndex].times = newTimes
-                    } else {
-                      // Tambah session baru
-                      allBookedSessions.push({
-                        date: cartItem.date,
-                        times: cartItem.times
-                      })
-                    }
+                  if (!sessionsMap.has(dateKey)) {
+                    sessionsMap.set(dateKey, new Set())
                   }
+                  
+                  cartItem.times.forEach((time: string) => {
+                    sessionsMap.get(dateKey)?.add(time)
+                  })
                 }
               })
-              
-              // Update state dengan data terbaru
-              setBookedSessions([...allBookedSessions])
+            }
+          })
+
+          // Convert Map to array
+          const bookedSessionsArray: BookedSession[] = Array.from(sessionsMap.entries()).map(
+            ([date, timesSet]) => ({
+              date,
+              times: Array.from(timesSet)
             })
-          }
+          )
+
+          setBookedSessions(bookedSessionsArray)
+        }, (error) => {
+          console.error('Error listening to booked sessions:', error)
         })
 
       } catch (error) {
@@ -207,28 +211,69 @@ export default function Page({ params }: { params: { slug: string } }) {
     setupBookedSessionsListener()
 
     return () => {
-      if (unsubscribeUsers) unsubscribeUsers()
+      if (unsubscribe) unsubscribe()
     }
   }, [])
 
-  // Check if a time slot is booked
-  const isTimeBooked = (time: string) => {
-    if (!date) return false
+  // Memoize booked times untuk tanggal yang dipilih
+  const bookedTimesForSelectedDate = useMemo(() => {
+    if (!date) return []
     
     const selectedDateStr = formatDate(date)
-    const bookedSession = bookedSessions.find(session => 
-      session.date === selectedDateStr && session.times.includes(time)
-    )
+    const bookedSession = bookedSessions.find(session => session.date === selectedDateStr)
     
-    return !!bookedSession
+    return bookedSession ? bookedSession.times : []
+  }, [date, bookedSessions])
+
+  // Auto-remove selected times yang sudah dibooking
+  useEffect(() => {
+    if (!date || selectedTimes.length === 0) return
+
+    const availableTimes = selectedTimes.filter(
+      time => !bookedTimesForSelectedDate.includes(time)
+    )
+
+    if (availableTimes.length !== selectedTimes.length) {
+      setSelectedTimes(availableTimes)
+      toast.info("Beberapa jam yang Anda pilih baru saja dibooking oleh orang lain", {
+        duration: 3000
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookedTimesForSelectedDate, date])
+
+  // Check if a time slot is available
+  const isTimeAvailable = useCallback((time: string) => {
+    return !BREAK_TIMES.includes(time) && !bookedTimesForSelectedDate.includes(time)
+  }, [bookedTimesForSelectedDate])
+
+  const handleDateChange = (newDate: Date | null) => {
+    setDate(newDate)
+    // Reset selected times saat tanggal berubah
+    setSelectedTimes([])
   }
+
+  const handleTimeToggle = useCallback((time: string) => {
+    if (!isTimeAvailable(time)) return
+
+    setSelectedTimes(prev => {
+      if (prev.includes(time)) {
+        return prev.filter(t => t !== time)
+      } else {
+        return [...prev, time].sort((a, b) => {
+          const indexA = times.indexOf(a)
+          const indexB = times.indexOf(b)
+          return indexA - indexB
+        })
+      }
+    })
+  }, [isTimeAvailable])
 
   const handleClaimVoucher = () => {
     setVoucherError("")
     const found = voucherList.find(v => v.code === voucher && v.active)
     
     if (found) {
-      // Check if voucher has reached max usage
       if (found.maxUsage && found.currentUsage && found.currentUsage >= found.maxUsage) {
         setVoucherError("Voucher sudah mencapai batas penggunaan maksimal")
         setDiscount(0)
@@ -243,7 +288,7 @@ export default function Page({ params }: { params: { slug: string } }) {
     }
   }
 
-  // Navigation functions
+  // Image navigation
   const nextImage = useCallback(() => {
     if (!productData) return
     const imagesToShow = productData.thumbnail 
@@ -266,7 +311,7 @@ export default function Page({ params }: { params: { slug: string } }) {
     )
   }, [productData])
 
-  // Touch handlers for swipe
+  // Touch handlers
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart(e.targetTouches[0].clientX)
   }
@@ -292,32 +337,7 @@ export default function Page({ params }: { params: { slug: string } }) {
     setTouchEnd(null)
   }
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Memuat produk...</p>
-      </div>
-    </div>
-  )
-  
-  if (!productData) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Produk Tidak Ditemukan</h1>
-        <Link href="/products" className="text-indigo-600 hover:text-indigo-700">
-          Kembali ke halaman produk
-        </Link>
-      </div>
-    </div>
-  )
-
-  const { id, name: productName, price, description, gallery, thumbnail } = productData
-  const imagesToShow = thumbnail ? [thumbnail, ...gallery.filter(img => img !== thumbnail)] : gallery
-
-  // Validasi selectedImageIndex agar tidak melebihi jumlah gambar
-  const safeSelectedImageIndex = Math.min(selectedImageIndex, imagesToShow.length - 1)
-
+  // Addon handlers
   const handleAddonQtyChange = (addonId: string, delta: number) => {
     setAddons(prev =>
       prev.map(a =>
@@ -344,16 +364,22 @@ export default function Page({ params }: { params: { slug: string } }) {
     )
   }
 
-  const addonTotal = addons.reduce((sum, a) => {
-    if (a.type === 'fixed') {
-      return sum + (a.qty > 0 ? a.price * people * (selectedTimes.length || 1) : 0)
-    } else {
-      const total = Object.values(a.selectedSessions || {}).reduce((s, v) => s + v * a.price, 0)
-      return sum + total
-    }
-  }, 0)
+  // Calculate totals
+  const addonTotal = useMemo(() => {
+    return addons.reduce((sum, a) => {
+      if (a.type === 'fixed') {
+        return sum + (a.qty > 0 ? a.price * people * (selectedTimes.length || 1) : 0)
+      } else {
+        const total = Object.values(a.selectedSessions || {}).reduce((s, v) => s + v * a.price, 0)
+        return sum + total
+      }
+    }, 0)
+  }, [addons, people, selectedTimes.length])
 
-  const total = price * people * (selectedTimes.length || 1) + addonTotal - discount
+  const total = useMemo(() => {
+    const basePrice = productData ? productData.price * people * (selectedTimes.length || 1) : 0
+    return basePrice + addonTotal - discount
+  }, [productData, people, selectedTimes.length, addonTotal, discount])
 
   const handleSubmit = () => {
     if (!name || !wa || !date || selectedTimes.length === 0 || !agree) {
@@ -361,38 +387,73 @@ export default function Page({ params }: { params: { slug: string } }) {
       return
     }
 
-    // Filter hanya addons yang dipilih
+    if (!productData) return
+
+    // Validasi final: pastikan semua selected times masih available
+    const unavailableTimes = selectedTimes.filter(time => !isTimeAvailable(time))
+    if (unavailableTimes.length > 0) {
+      setSelectedTimes(prev => prev.filter(time => isTimeAvailable(time)))
+      toast.error("Beberapa jam yang dipilih sudah tidak tersedia. Silakan pilih jam lainnya.")
+      return
+    }
+
+    // Filter only selected addons
     const selectedAddons = addons.filter(addon => 
       addon.type === 'fixed' 
         ? addon.qty > 0 
         : Object.values(addon.selectedSessions || {}).some(qty => qty > 0)
     )
 
-    // Buat ID unik untuk setiap booking
-    const uniqueId = `${id}-${Date.now()}`
+    const uniqueId = `${productData.id}-${Date.now()}`
 
     addItemToCart({
       id: uniqueId,
-      name: productName,
-      price,
-      quantity: 1, // SELALU 1 untuk setiap booking
+      name: productData.name,
+      price: productData.price,
+      quantity: 1,
       date: formatDate(date),
       times: selectedTimes,
       addons: selectedAddons,
       total,
       people,
       voucherDiscount: discount,
-      thumbnail: thumbnail || (gallery.length > 0 ? gallery[0] : ''),
+      thumbnail: productData.thumbnail || (productData.gallery.length > 0 ? productData.gallery[0] : ''),
       slug,
       customerName: name,
       customerWa: wa,
     })
-
-
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-indigo-600 mx-auto" />
+          <p className="mt-4 text-gray-600">Memuat produk...</p>
+        </div>
+      </div>
+    )
+  }
+  
+  if (!productData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Produk Tidak Ditemukan</h1>
+          <Link href="/products" className="text-indigo-600 hover:text-indigo-700">
+            Kembali ke halaman produk
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  const { name: productName, price, description, gallery, thumbnail } = productData
+  const imagesToShow = thumbnail ? [thumbnail, ...gallery.filter(img => img !== thumbnail)] : gallery
+  const safeSelectedImageIndex = Math.min(selectedImageIndex, Math.max(0, imagesToShow.length - 1))
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
         <nav className="mb-8">
@@ -416,87 +477,89 @@ export default function Page({ params }: { params: { slug: string } }) {
         </nav>
 
         <div className="lg:grid lg:grid-cols-12 lg:gap-8">
-          {/* Product Images & Description - Left Column */}
+          {/* Left Column */}
           <div className="lg:col-span-7 mb-8 lg:mb-0">
-            {/* Product Images with Thumbnail Gallery */}
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-6">
-              <div className="flex flex-col gap-4">
-                {/* Main Image with Navigation */}
-                <div className="relative aspect-[4/3] bg-gray-100 rounded-xl overflow-hidden">
-                  <div
-                    className="w-full h-full"
-                    onTouchStart={handleTouchStart}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
-                  >
-                    <Image
-                      src={imagesToShow[safeSelectedImageIndex]}
-                      alt={productName}
-                      fill
-                      className="object-cover"
-                      priority
-                      onError={(e) => {
-                        // Fallback jika gambar error
-                        const target = e.target as HTMLImageElement
-                        target.src = '/images/placeholder.jpg'
-                      }}
-                    />
+            {/* Product Images */}
+            {imagesToShow.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-6">
+                <div className="flex flex-col gap-4">
+                  {/* Main Image */}
+                  <div className="relative aspect-[4/3] bg-gray-100 rounded-xl overflow-hidden">
+                    <div
+                      className="w-full h-full"
+                      onTouchStart={handleTouchStart}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
+                    >
+                      <Image
+                        src={imagesToShow[safeSelectedImageIndex]}
+                        alt={productName}
+                        fill
+                        className="object-cover"
+                        priority
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement
+                          target.src = '/images/placeholder.jpg'
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Navigation Arrows */}
+                    {imagesToShow.length > 1 && (
+                      <>
+                        <button
+                          onClick={prevImage}
+                          className="absolute left-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-105"
+                          aria-label="Previous image"
+                        >
+                          <ChevronLeft className="w-6 h-6 text-gray-700" />
+                        </button>
+                        <button
+                          onClick={nextImage}
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-105"
+                          aria-label="Next image"
+                        >
+                          <ChevronRight className="w-6 h-6 text-gray-700" />
+                        </button>
+                      </>
+                    )}
                   </div>
                   
-                  {/* Navigation Arrows */}
+                  {/* Thumbnails */}
                   {imagesToShow.length > 1 && (
-                    <>
-                      <button
-                        onClick={prevImage}
-                        className="absolute left-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white/80 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-105"
-                      >
-                        <ChevronLeft className="w-6 h-6 text-gray-700" />
-                      </button>
-                      <button
-                        onClick={nextImage}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white/80 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-105"
-                      >
-                        <ChevronRight className="w-6 h-6 text-gray-700" />
-                      </button>
-                    </>
+                    <div className="px-4 pb-4">
+                      <div className="flex gap-2 overflow-x-auto py-2">
+                        {imagesToShow.map((image, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setSelectedImageIndex(index)}
+                            className={`flex-shrink-0 w-20 h-20 rounded-lg border-2 overflow-hidden transition-all duration-200 ${
+                              safeSelectedImageIndex === index 
+                                ? 'border-indigo-600 ring-2 ring-indigo-200' 
+                                : 'border-gray-300 hover:border-indigo-400'
+                            }`}
+                          >
+                            <Image
+                              src={image}
+                              alt={`${productName} ${index + 1}`}
+                              width={80}
+                              height={80}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.src = '/images/placeholder.jpg'
+                              }}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
-                
-                {/* Thumbnail Gallery */}
-                {imagesToShow.length > 1 && (
-                  <div className="px-4 pb-4">
-                    <div className="flex gap-2 overflow-x-auto py-2">
-                      {imagesToShow.map((image, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setSelectedImageIndex(index)}
-                          className={`flex-shrink-0 w-20 h-20 rounded-lg border-2 overflow-hidden transition-all duration-200 ${
-                            safeSelectedImageIndex === index 
-                              ? 'border-indigo-600 ring-2 ring-indigo-600 ring-opacity-20' 
-                              : 'border-gray-300 hover:border-gray-400'
-                          }`}
-                        >
-                          <Image
-                            src={image}
-                            alt={`${productName} ${index + 1}`}
-                            width={80}
-                            height={80}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              // Fallback jika thumbnail error
-                              const target = e.target as HTMLImageElement
-                              target.src = '/images/placeholder.jpg'
-                            }}
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
-            </div>
+            )}
             
-            {/* Product Description */}
+            {/* Description */}
             {description && (
               <div className="bg-white rounded-2xl shadow-sm p-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Deskripsi Produk</h2>
@@ -509,211 +572,215 @@ export default function Page({ params }: { params: { slug: string } }) {
             )}
           </div>
 
-          {/* Booking Form - Right Column */}
+          {/* Right Column - Booking Form */}
           <div className="lg:col-span-5">
-            <div className="bg-white rounded-2xl shadow-sm p-6 sticky top-6">
+            <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-6">
               <div className="space-y-6">
-                {/* Product Header */}
+                {/* Header */}
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900 mb-2">{productName}</h1>
-                  <p className="text-3xl font-bold text-indigo-600">{idrFormatter(price)} <span className="text-lg text-gray-600">/sesi</span></p>
+                  <p className="text-3xl font-bold text-indigo-600">
+                    {idrFormatter(price)} 
+                    <span className="text-lg text-gray-600 font-normal">/sesi</span>
+                  </p>
                 </div>
 
                 {/* Date Picker */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-3">
-                    Pilih Tanggal Booking
+                    Pilih Tanggal Booking <span className="text-red-500">*</span>
                   </label>
                   <DatePicker
                     selected={date}
-                    onChange={d => setDate(d)}
+                    onChange={handleDateChange}
                     dateFormat="dd/MM/yyyy"
                     minDate={new Date()}
                     placeholderText='Pilih tanggal booking'
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                   />
                 </div>
 
                 {/* Time Selection */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-3">
-                    Pilih Jam (Sesi) {date && `- ${formatDate(date)}`}
-                  </label>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                    {times.map(time => {
-                      const isBooked = isTimeBooked(time)
-                      const isBreak = time === "12:30" || time === "18:30"
-                      const isSelected = selectedTimes.includes(time)
-                      const isDisabled = isBooked || isBreak
-
-                      return (
-                        <button
-                          key={time}
-                          type="button"
-                          disabled={isDisabled}
-                          onClick={() => {
-                            setSelectedTimes(prev =>
-                              prev.includes(time) 
-                                ? prev.filter(t => t !== time)
-                                : [...prev, time]
-                            )
-                          }}
-                          className={`
-                            px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200
-                            ${isSelected 
-                              ? "bg-indigo-600 text-white border-indigo-600 shadow-md" 
-                              : "bg-white text-gray-900 border-gray-300 hover:border-indigo-400 hover:shadow-sm"
-                            }
-                            ${isDisabled 
-                              ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200" 
-                              : ""
-                            }
-                          `}
-                          title={isBooked ? "Sudah dibooking" : isBreak ? "Waktu istirahat" : ""}
-                        >
-                          {time}
-                          {isBreak && " ⏸"}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  {date && bookedSessions.some(session => session.date === formatDate(date)) && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      * Slot waktu yang sudah dipesan ditandai dengan opacity lebih rendah
+                {date && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                      Pilih Jam (Sesi) <span className="text-red-500">*</span>
+                    </label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Tanggal: {formatDate(date)}
                     </p>
-                  )}
-                </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {times.map(time => {
+                        const isBreak = BREAK_TIMES.includes(time)
+                        const isBooked = bookedTimesForSelectedDate.includes(time)
+                        const isSelected = selectedTimes.includes(time)
+                        const isDisabled = isBreak || isBooked
+
+                        return (
+                          <button
+                            key={time}
+                            type="button"
+                            disabled={isDisabled}
+                            onClick={() => handleTimeToggle(time)}
+                            className={`
+                              px-2 py-2 rounded-lg border-2 text-xs font-semibold transition-all duration-200
+                              ${isSelected 
+                                ? "bg-indigo-600 text-white border-indigo-600 shadow-md scale-105" 
+                                : "bg-white text-gray-900 border-gray-300 hover:border-indigo-400 hover:bg-indigo-50"
+                              }
+                              ${isDisabled 
+                                ? "!opacity-40 !cursor-not-allowed !bg-gray-50 !text-gray-400 !border-gray-200" 
+                                : "cursor-pointer"
+                              }
+                            `}
+                            title={
+                              isBreak ? "Waktu istirahat" : 
+                              isBooked ? "Sudah dibooking" : 
+                              "Klik untuk pilih"
+                            }
+                          >
+                            {time}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {selectedTimes.length > 0 && (
+                      <p className="text-xs text-indigo-600 mt-2 font-medium">
+                        {selectedTimes.length} sesi dipilih
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Number of People */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-3">
-                    Jumlah Orang
+                    Jumlah Orang <span className="text-red-500">*</span>
                   </label>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <Button 
                       type="button" 
                       onClick={() => setPeople(Math.max(1, people - 1))}
-                      className="w-12 h-12 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 border-0 text-lg font-bold"
+                      className="w-12 h-12 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 border-0 text-xl font-bold"
                     >
                       -
                     </Button>
-                    <span className="w-12 text-center text-lg font-semibold text-gray-900">{people}</span>
+                    <span className="w-16 text-center text-xl font-semibold text-gray-900">{people}</span>
                     <Button 
                       type="button" 
                       onClick={() => setPeople(people + 1)}
-                      className="w-12 h-12 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 border-0 text-lg font-bold"
+                      className="w-12 h-12 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 border-0 text-xl font-bold"
                     >
                       +
                     </Button>
-                    <span className="text-sm text-gray-600 ml-2">orang</span>
+                    <span className="text-sm text-gray-600">orang</span>
                   </div>
                 </div>
 
                 {/* Addons */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-3">
-                    Opsi Tambahan
-                  </label>
-                  <div className="space-y-3">
-                    {addons.map(addon => (
-                      <div key={addon.id} className="border border-gray-200 rounded-xl p-4 bg-gray-50">
-                        {addon.type === 'fixed' ? (
-                          <label className="flex items-start gap-3 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={addon.qty > 0}
-                              onChange={() => {
-                                setAddons(prev =>
-                                  prev.map(a =>
-                                    a.id === addon.id
-                                      ? { ...a, qty: a.qty > 0 ? 0 : 1 }
-                                      : a
-                                  )
-                                )
-                              }}
-                              className="h-5 w-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 mt-0.5"
-                            />
-                            <div className="flex-1">
-                              <span className="font-medium text-gray-900">{addon.name}</span>
-                              <p className="text-sm text-gray-600 mt-1">
-                                {idrFormatter(addon.price)} / sesi / orang
-                              </p>
-                            </div>
-                          </label>
-                        ) : (
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <span className="font-medium text-gray-900">{addon.name}</span>
-                                <p className="text-sm text-gray-600">
-                                  {idrFormatter(addon.price)} per item
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  type="button"
-                                  onClick={() => handleAddonQtyChange(addon.id, -1)}
-                                  className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 border-0"
-                                  disabled={addon.qty === 0}
-                                >
-                                  -
-                                </Button>
-                                <span className="w-8 text-center font-medium text-gray-900">{addon.qty}</span>
-                                <Button
-                                  type="button"
-                                  onClick={() => handleAddonQtyChange(addon.id, 1)}
-                                  className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 border-0"
-                                >
-                                  +
-                                </Button>
-                              </div>
-                            </div>
-
-                            {/* Session Distribution */}
-                            {addon.qty > 0 && selectedTimes.length > 0 && (
-                              <div className="bg-white rounded-lg p-3 border">
-                                <p className="text-sm font-medium text-gray-900 mb-2">
-                                  Distribusi item per sesi:
-                                </p>
-                                <div className="space-y-2">
-                                  {selectedTimes.map(session => {
-                                    const count = addon.selectedSessions?.[session] || 0
-                                    return (
-                                      <div key={session} className="flex items-center justify-between">
-                                        <span className="text-sm text-gray-700 w-16">{session}</span>
-                                        <div className="flex items-center gap-2">
-                                          <Button
-                                            type="button"
-                                            onClick={() => handleSessionQtyChange(addon.id, session, -1)}
-                                            className="w-6 h-6 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 border-0 text-xs"
-                                            disabled={count === 0}
-                                          >
-                                            -
-                                          </Button>
-                                          <span className="w-6 text-center text-sm font-medium">{count}</span>
-                                          <Button
-                                            type="button"
-                                            onClick={() => handleSessionQtyChange(addon.id, session, 1)}
-                                            className="w-6 h-6 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 border-0 text-xs"
-                                          >
-                                            +
-                                          </Button>
-                                        </div>
-                                      </div>
+                {addons.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                      Opsi Tambahan
+                    </label>
+                    <div className="space-y-3">
+                      {addons.map(addon => (
+                        <div key={addon.id} className="border-2 border-gray-200 rounded-xl p-3 bg-gray-50 hover:border-gray-300 transition-colors">
+                          {addon.type === 'fixed' ? (
+                            <label className="flex items-start gap-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={addon.qty > 0}
+                                onChange={() => {
+                                  setAddons(prev =>
+                                    prev.map(a =>
+                                      a.id === addon.id
+                                        ? { ...a, qty: a.qty > 0 ? 0 : 1 }
+                                        : a
                                     )
-                                  })}
+                                  )
+                                }}
+                                className="h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 mt-0.5"
+                              />
+                              <div className="flex-1">
+                                <span className="font-medium text-gray-900 text-sm">{addon.name}</span>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  {idrFormatter(addon.price)} / sesi / orang
+                                </p>
+                              </div>
+                            </label>
+                          ) : (
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <span className="font-medium text-gray-900 text-sm">{addon.name}</span>
+                                  <p className="text-xs text-gray-600">
+                                    {idrFormatter(addon.price)} per item
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    type="button"
+                                    onClick={() => handleAddonQtyChange(addon.id, -1)}
+                                    className="w-7 h-7 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 border-0 text-sm"
+                                    disabled={addon.qty === 0}
+                                  >
+                                    -
+                                  </Button>
+                                  <span className="w-8 text-center font-medium text-gray-900 text-sm">{addon.qty}</span>
+                                  <Button
+                                    type="button"
+                                    onClick={() => handleAddonQtyChange(addon.id, 1)}
+                                    className="w-7 h-7 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 border-0 text-sm"
+                                  >
+                                    +
+                                  </Button>
                                 </div>
                               </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    {addons.length === 0 && (
-                      <p className="text-center text-gray-500 py-4">Tidak ada opsi tambahan tersedia</p>
-                    )}
+
+                              {/* Session Distribution */}
+                              {addon.qty > 0 && selectedTimes.length > 0 && (
+                                <div className="bg-white rounded-lg p-3 border-2 border-gray-200">
+                                  <p className="text-xs font-medium text-gray-900 mb-2">
+                                    Distribusi item per sesi:
+                                  </p>
+                                  <div className="space-y-2">
+                                    {selectedTimes.map(session => {
+                                      const count = addon.selectedSessions?.[session] || 0
+                                      return (
+                                        <div key={session} className="flex items-center justify-between">
+                                          <span className="text-xs text-gray-700 w-14 font-medium">{session}</span>
+                                          <div className="flex items-center gap-2">
+                                            <Button
+                                              type="button"
+                                              onClick={() => handleSessionQtyChange(addon.id, session, -1)}
+                                              className="w-6 h-6 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 border-0 text-xs"
+                                              disabled={count === 0}
+                                            >
+                                              -
+                                            </Button>
+                                            <span className="w-6 text-center text-xs font-medium">{count}</span>
+                                            <Button
+                                              type="button"
+                                              onClick={() => handleSessionQtyChange(addon.id, session, 1)}
+                                              className="w-6 h-6 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 border-0 text-xs"
+                                            >
+                                              +
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Customer Information */}
                 <div className="space-y-4">
@@ -721,42 +788,27 @@ export default function Page({ params }: { params: { slug: string } }) {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nama Lengkap *
+                      Nama Lengkap <span className="text-red-500">*</span>
                     </label>
                     <input 
                       value={name} 
                       onChange={e => setName(e.target.value)}
                       placeholder="Masukkan nama lengkap"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                     />
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nomor WhatsApp *
+                      Nomor WhatsApp <span className="text-red-500">*</span>
                     </label>
                     <input 
                       value={wa} 
                       onChange={e => setWa(e.target.value)}
                       placeholder="Contoh: 081234567890"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                     />
                   </div>
-                </div>
-
-                {/* Agreement */}
-                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={agree} 
-                      onChange={e => setAgree(e.target.checked)} 
-                      className="h-5 w-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 mt-0.5"
-                    />
-                    <span className="text-sm text-gray-700">
-                      Saya setuju dan memahami bahwa booking yang sudah dibayar tidak dapat dibatalkan *
-                    </span>
-                  </label>
                 </div>
 
                 {/* Voucher */}
@@ -769,104 +821,131 @@ export default function Page({ params }: { params: { slug: string } }) {
                       <input
                         value={voucher}
                         onChange={e => {
-                          setVoucher(e.target.value)
+                          setVoucher(e.target.value.toUpperCase())
                           setVoucherError("")
                         }}
-                        placeholder="Masukkan kode voucher (opsional)"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+                        placeholder="Kode voucher (opsional)"
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all uppercase"
                       />
                       {voucherError && (
-                        <p className="text-red-500 text-xs mt-1">{voucherError}</p>
+                        <p className="text-red-500 text-xs mt-2 font-medium">{voucherError}</p>
+                      )}
+                      {discount > 0 && (
+                        <p className="text-green-600 text-xs mt-2 font-medium">
+                          ✓ Voucher aktif - Diskon {idrFormatter(discount)}
+                        </p>
                       )}
                     </div>
                     <Button
                       type="button"
                       onClick={handleClaimVoucher}
-                      className="px-6 bg-green-500 text-white hover:bg-green-600 rounded-xl whitespace-nowrap"
+                      disabled={!voucher}
+                      className="px-6 py-3 bg-green-500 text-white hover:bg-green-600 rounded-xl whitespace-nowrap font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                       Klaim
                     </Button>
                   </div>
                 </div>
 
+                {/* Agreement */}
+                <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={agree} 
+                      onChange={e => setAgree(e.target.checked)} 
+                      className="h-5 w-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 mt-0.5"
+                    />
+                    <span className="text-sm text-gray-800">
+                      Saya setuju dan memahami bahwa <strong>booking yang sudah dibayar tidak dapat dibatalkan</strong> <span className="text-red-500">*</span>
+                    </span>
+                  </label>
+                </div>
+
                 {/* Price Summary */}
-<div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-  <h3 className="font-semibold text-gray-900 mb-3">Rincian Pembayaran</h3>
-  <div className="space-y-2 text-sm">
-    <div className="flex justify-between">
-      <span className="text-gray-600">Harga Dasar:</span>
-      <span className="text-gray-900">
-        {idrFormatter(price)} × {people} orang × {selectedTimes.length} sesi
-      </span>
-    </div>
-    <div className="text-right">
-      <span className="text-gray-900 font-medium">
-        {idrFormatter(price * people * selectedTimes.length)}
-      </span>
-    </div>
+                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border-2 border-indigo-100">
+                  <h3 className="font-bold text-gray-900 mb-4 text-lg">Rincian Pembayaran</h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between items-start">
+                      <span className="text-gray-600">Harga Dasar:</span>
+                      <div className="text-right">
+                        <p className="text-gray-700">
+                          {idrFormatter(price)} × {people} orang × {selectedTimes.length || 1} sesi
+                        </p>
+                        <p className="text-gray-900 font-semibold mt-1">
+                          {idrFormatter(price * people * (selectedTimes.length || 1))}
+                        </p>
+                      </div>
+                    </div>
 
-    {addons.filter(a => a.qty > 0 || Object.values(a.selectedSessions || {}).some(qty => qty > 0)).map(a => (
-      a.type === 'fixed' ? (
-        <div key={a.id}>
-          <div className="flex justify-between">
-            <span className="text-gray-600">{a.name}:</span>
-            <span className="text-gray-900">
-              {idrFormatter(a.price)} × {people} orang × {selectedTimes.length} sesi
-            </span>
-          </div>
-          <div className="text-right">
-            <span className="text-gray-900 font-medium">
-              {idrFormatter(a.price * people * selectedTimes.length)}
-            </span>
-          </div>
-        </div>
-      ) : (
-        Object.entries(a.selectedSessions || {})
-          .filter(([_, qty]) => qty > 0)
-          .map(([session, qty]) => (
-            <div key={session}>
-              <div className="flex justify-between">
-                <span className="text-gray-600">{a.name} ({session}):</span>
-                <span className="text-gray-900">
-                  {idrFormatter(a.price)} × {qty}
-                </span>
-              </div>
-              <div className="text-right">
-                <span className="text-gray-900 font-medium">
-                  {idrFormatter(a.price * qty)}
-                </span>
-              </div>
-            </div>
-          ))
-      )
-    ))}
+                    {addons.filter(a => a.qty > 0 || Object.values(a.selectedSessions || {}).some(qty => qty > 0)).map(a => (
+                      a.type === 'fixed' ? (
+                        <div key={a.id} className="flex justify-between items-start">
+                          <span className="text-gray-600">{a.name}:</span>
+                          <div className="text-right">
+                            <p className="text-gray-700">
+                              {idrFormatter(a.price)} × {people} × {selectedTimes.length || 1}
+                            </p>
+                            <p className="text-gray-900 font-semibold mt-1">
+                              {idrFormatter(a.price * people * (selectedTimes.length || 1))}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        Object.entries(a.selectedSessions || {})
+                          .filter(([_, qty]) => qty > 0)
+                          .map(([session, qty]) => (
+                            <div key={session} className="flex justify-between items-start">
+                              <span className="text-gray-600">{a.name} ({session}):</span>
+                              <div className="text-right">
+                                <p className="text-gray-700">
+                                  {idrFormatter(a.price)} × {qty}
+                                </p>
+                                <p className="text-gray-900 font-semibold mt-1">
+                                  {idrFormatter(a.price * qty)}
+                                </p>
+                              </div>
+                            </div>
+                          ))
+                      )
+                    ))}
 
-    {discount > 0 && (
-      <div className="flex justify-between text-green-600">
-        <span>Diskon Voucher:</span>
-        <span>- {idrFormatter(discount)}</span>
-      </div>
-    )}
+                    {discount > 0 && (
+                      <div className="flex justify-between text-green-600 font-semibold">
+                        <span>Diskon Voucher:</span>
+                        <span>- {idrFormatter(discount)}</span>
+                      </div>
+                    )}
 
-    <div className="border-t border-gray-200 pt-2 mt-2">
-      <div className="flex justify-between items-center">
-        <span className="font-semibold text-gray-900">Total:</span>
-        <span className="text-xl font-bold text-indigo-600">
-          {idrFormatter(total)}
-        </span>
-      </div>
-    </div>
-  </div>
-</div>
+                    <div className="border-t-2 border-indigo-200 pt-3 mt-3">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-gray-900 text-base">Total Bayar:</span>
+                        <span className="text-2xl font-bold text-indigo-600">
+                          {idrFormatter(total)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Submit Button */}
                 <Button 
                   onClick={handleSubmit}
                   disabled={!name || !wa || !date || selectedTimes.length === 0 || !agree}
-                  className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-lg font-bold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-400 disabled:to-gray-400"
                 >
-                  Booking Sekarang
+                  {!name || !wa || !date || selectedTimes.length === 0 || !agree 
+                    ? "Lengkapi Data Booking" 
+                    : "Booking Sekarang"
+                  }
                 </Button>
+
+                {/* Info */}
+                <div className="text-center">
+                  <p className="text-xs text-gray-500">
+                    * Data yang tersedia diupdate secara realtime
+                  </p>
+                </div>
               </div>
             </div>
           </div>

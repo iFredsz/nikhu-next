@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import ProfileLayoutClient from './profileLayoutClient'
-import { adminDb } from '@/app/firebase-admin'
+import { adminDb } from '@/lib/firebase-admin'
 
 async function getUserRole(uid: string) {
   try {

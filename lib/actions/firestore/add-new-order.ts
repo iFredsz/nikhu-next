@@ -1,4 +1,4 @@
-import { db } from "@/app/firebase"
+import { db } from "@/lib/firebase"
 import { addDoc, collection, serverTimestamp } from "firebase/firestore"
 import { Midtrans_Checkout_Data } from "../midtrans/generate-checkout-data"
 import { CartItemsStore } from "@/store/cart-store"

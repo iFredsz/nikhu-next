@@ -45,7 +45,7 @@ export async function generateCheckoutData(
       price: itemTotal,
       quantity: 1,
       category: 'Booking',
-      merchant_name: 'Your Business Name'
+      merchant_name: 'NIKHU STUDIO',
     })
 
     gross_amount += itemTotal

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { db } from '@/app/firebase'
+import { db } from '@/lib/firebase'
 import { collection, getDocs } from 'firebase/firestore'
 
 // Type untuk response API

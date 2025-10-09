@@ -1,6 +1,6 @@
 'use client'
 
-import { auth, db } from '@/app/firebase'
+import { auth, db } from '@/lib/firebase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createUserWithEmailAndPassword } from 'firebase/auth'

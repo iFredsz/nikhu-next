@@ -1,5 +1,5 @@
 // lib/actions/firestore/get-orders.ts
-import { db } from "@/app/firebase"
+import { db } from "@/lib/firebase"
 import { collection, getDocs, query, orderBy } from "firebase/firestore"
 
 export async function getOrders(uid: string): Promise<any[]> {

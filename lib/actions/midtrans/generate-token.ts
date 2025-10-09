@@ -14,7 +14,7 @@ export async function generateToken(
   uid: string,
 ): Promise<Midtrans_Generate_Token> {
   let snap = new midtransClient.Snap({
-    isProduction: false,
+    isProduction: true,
     serverKey: process.env.MIDTRANS_SERVER,
     clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT,
   })
@@ -26,10 +26,10 @@ export async function generateToken(
     },
     item_details: checkoutData.items,
     page_expiry: {
-      duration: 3,
-      unit: 'hours',
+      duration: 10,
+      unit: 'minute',
     },
-    enabled_payments: ['bca_va'],
+    
     user_id: uid,
   })
 

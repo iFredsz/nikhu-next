@@ -199,10 +199,7 @@ export default function ReceiptTemplate({ orderData, orderId }: Props) {
                     <span>-{idrFormatter(b.voucherDiscount)}</span>
                   </div>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderTop: '1px solid black', padding: '4px', marginTop: '8px' }}>
-                  <span>TOTAL:</span>
-                  <span>{idrFormatter(finalTotal)}</span>
-                </div>
+                
               </div>
             </div>
           )

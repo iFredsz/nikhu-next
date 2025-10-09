@@ -158,7 +158,7 @@ export default function Contact() {
                     icon: MapPin,
                     text: "Kota Salatiga",
                     onClick: openGoogleMaps,
-                    description: "Jawa Tengah, 50732",
+                    description: "Jawa Tengah, 50715",
                   },
                 ].map((item, index) => (
                   <motion.div

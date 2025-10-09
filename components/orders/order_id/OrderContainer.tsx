@@ -311,8 +311,9 @@ export default function OrderContainer({ order_id, uid }: Props) {
 
       {payment_status === 'success' && <OrderSuccessPlaceholder />}
 
+      {/* PERBAIKAN: Hapus currentOrderData, fetch langsung di MidtransPayment */}
       {payment_status !== 'success' && payment_status !== 'failure' && token && (
-        <MidtransPayment token={token} order_id={order_id} />
+        <MidtransPayment token={token} order_id={order_id} uid={uid} />
       )}
 
       {payment_status !== 'success' && payment_status !== 'failure' && !token && (

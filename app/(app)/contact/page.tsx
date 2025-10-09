@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Mail, Phone, MapPin, Send, Clock, Calendar, X } from "lucide-react";
+import { Mail, Phone, MapPin, Send, Clock } from "lucide-react";
 import emailjs from "@emailjs/browser";
 
 export default function Contact() {
@@ -49,58 +49,67 @@ export default function Contact() {
     return isValid;
   };
 
+  // Fungsi escape HTML agar simbol tidak corrupt
+  const escapeHtml = (text: string) => {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!validateForm()) return;
+    if (!validateForm()) return;
 
-  setIsSubmitting(true);
+    setIsSubmitting(true);
 
-  try {
-    const serviceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!;
-    const templateId = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!;
-    const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!;
+    try {
+      const serviceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!;
+      const templateId = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!;
+      const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!;
 
-    if (!serviceId || !templateId || !publicKey) {
-      throw new Error("Missing EmailJS environment variables");
+      if (!serviceId || !templateId || !publicKey) {
+        throw new Error("Missing EmailJS environment variables");
+      }
+
+      const templateParams = {
+        name: escapeHtml(formData.name),
+        email: escapeHtml(formData.email),
+        subject: escapeHtml(formData.subject),
+        message: escapeHtml(formData.message),
+      };
+
+      const result = await emailjs.send(
+        serviceId,
+        templateId,
+        templateParams,
+        publicKey
+      );
+
+      if (result.status === 200) {
+        toast.success("Pesan berhasil dikirim!");
+        setFormData({ name: "", email: "", subject: "", message: "" });
+        setErrors({});
+      } else {
+        toast.error("Gagal mengirim pesan. Silakan coba lagi.");
+      }
+    } catch (error: any) {
+      console.error("EmailJS Error:", error);
+      toast.error("Terjadi kesalahan saat mengirim pesan.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // Kirim hanya variabel yang ada di template
-    const templateParams = {
-      name: formData.name || "",
-      email: formData.email || "",
-      subject: formData.subject || "",
-      message: formData.message || "",
-    };
-
-    const result = await emailjs.send(serviceId, templateId, templateParams, publicKey);
-
-    if (result.status === 200) {
-      toast.success("Pesan berhasil dikirim!");
-      setFormData({ name: "", email: "", subject: "", message: "" });
-      setErrors({});
-    } else {
-      toast.error("Gagal mengirim pesan. Silakan coba lagi.");
-    }
-  } catch (error: any) {
-    console.error("EmailJS Error:", error);
-    toast.error("Terjadi kesalahan saat mengirim pesan.");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-
-
+  };
 
   const openGoogleMaps = () => {
     window.open("https://maps.app.goo.gl/Hg59sf1Gp6NGAYie8?g_st=ipc", "_blank");
   };
 
   return (
-    <section
-      id="contact"
-      className="py-12 md:py-12 relative overflow-hidden"
-    >
+    <section id="contact" className="py-12 md:py-12 relative overflow-hidden">
       <div className="container mx-auto px-4 max-w-7xl relative z-10">
         {/* Header */}
         <motion.div
@@ -109,7 +118,6 @@ export default function Contact() {
           transition={{ duration: 0.8 }}
           className="text-center mb-12 md:mb-16"
         >
-
           <h2 className="text-2xl md:text-3xl font-bold mb-3 md:mb-4 text-gray-900">
             Yuk Membangun Sesuatu yang Luar Biasa
           </h2>
@@ -134,82 +142,79 @@ export default function Contact() {
 
               <div className="space-y-3 md:space-y-4">
                 {[
-  {
-    icon: Phone,
-    text: "+62 857-0226-2321",
-    href: "https://wa.me/+6285702262321",
-    description: "Senin-Jumat, 09.00-19.00",
-  },
-  {
-    icon: Mail,
-    text: "nikhustudio@gmail.com",
-    href: "mailto:nikhustudio@gmail.com",
-    description: "Balasan dalam 24 jam",
-  },
-  {
-    icon: MapPin,
-    text: "Kota Salatiga",
-    onClick: openGoogleMaps,
-    description: "Jawa Tengah, 50732",
-  },
-].map((item, index) => (
-  <motion.div
-    key={index}
-    whileHover={{ y: -2 }}
-    className={`flex items-start gap-3 p-3 md:p-4 rounded-lg md:rounded-xl bg-white border hover:border-amber-300 transition-all cursor-pointer ${
-      item.href || item.onClick ? "group hover:bg-amber-50" : ""
-    }`}
-    onClick={() => {
-      if (item.href) window.open(item.href, "_blank");
-      if (item.onClick) item.onClick();
-    }}
-  >
-    <div className="p-2 md:p-2.5 rounded-md md:rounded-lg bg-amber-300/20 text-amber-700">
-      <item.icon className="w-4 h-4 md:w-5 md:h-5" />
-    </div>
-    <div className="flex-1">
-      <span className="text-gray-800 text-sm md:text-base font-medium block group-hover:text-amber-600 transition-colors">
-        {item.text}
-      </span>
-      <p className="text-gray-600 text-xs md:text-sm mt-0.5">
-        {item.description}
-      </p>
-    </div>
-  </motion.div>
-))}
-
+                  {
+                    icon: Phone,
+                    text: "+62 857-0226-2321",
+                    href: "https://wa.me/+6285702262321",
+                    description: "Senin-Jumat, 09.00-19.00",
+                  },
+                  {
+                    icon: Mail,
+                    text: "nikhustudio@gmail.com",
+                    href: "mailto:nikhustudio@gmail.com",
+                    description: "Balasan dalam 24 jam",
+                  },
+                  {
+                    icon: MapPin,
+                    text: "Kota Salatiga",
+                    onClick: openGoogleMaps,
+                    description: "Jawa Tengah, 50732",
+                  },
+                ].map((item, index) => (
+                  <motion.div
+                    key={index}
+                    whileHover={{ y: -2 }}
+                    className={`flex items-start gap-3 p-3 md:p-4 rounded-lg md:rounded-xl bg-white border hover:border-amber-300 transition-all cursor-pointer ${
+                      item.href || item.onClick ? "group hover:bg-amber-50" : ""
+                    }`}
+                    onClick={() => {
+                      if (item.href) window.open(item.href, "_blank");
+                      if (item.onClick) item.onClick();
+                    }}
+                  >
+                    <div className="p-2 md:p-2.5 rounded-md md:rounded-lg bg-amber-300/20 text-amber-700">
+                      <item.icon className="w-4 h-4 md:w-5 md:h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-gray-800 text-sm md:text-base font-medium block group-hover:text-amber-600 transition-colors">
+                        {item.text}
+                      </span>
+                      <p className="text-gray-600 text-xs md:text-sm mt-0.5">
+                        {item.description}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             </div>
 
             {/* Office Hours */}
-<div className="bg-white p-4 md:p-6 rounded-lg md:rounded-xl border shadow-sm">
-  <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-3 md:mb-4">
-    Email Customer Service
-  </h3>
-
-  <div className="space-y-2 md:space-y-3">
-    {[
-      { days: "Senin - Jumat", time: "09.00 - 18.00 WIB", icon: Clock },
-      { days: "Sabtu", time: "10.00 - 14.00 WIB", icon: Clock },
-      { days: "Minggu", time: "09.00 - 12.00 WIB", icon: Clock }, // fleksibel
-    ].map((item, index) => (
-      <div key={index} className="flex items-center gap-3 py-2 md:py-2.5">
-        <div className="p-1.5 md:p-2 rounded-md md:rounded-lg bg-amber-300/20 text-amber-700">
-          <item.icon className="w-3 h-3 md:w-4 md:h-4" />
-        </div>
-        <div className="flex-1 flex justify-between items-center">
-          <span className="text-gray-800 text-sm md:text-base font-medium">
-            {item.days}
-          </span>
-          <span className="text-gray-700 text-xs md:text-sm font-medium">
-            {item.time}
-          </span>
-        </div>
-      </div>
-    ))}
-  </div>
-</div>
-
+            <div className="bg-white p-4 md:p-6 rounded-lg md:rounded-xl border shadow-sm">
+              <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-3 md:mb-4">
+                Email Customer Service
+              </h3>
+              <div className="space-y-2 md:space-y-3">
+                {[
+                  { days: "Senin - Jumat", time: "09.00 - 18.00 WIB", icon: Clock },
+                  { days: "Sabtu", time: "10.00 - 14.00 WIB", icon: Clock },
+                  { days: "Minggu", time: "09.00 - 12.00 WIB", icon: Clock },
+                ].map((item, index) => (
+                  <div key={index} className="flex items-center gap-3 py-2 md:py-2.5">
+                    <div className="p-1.5 md:p-2 rounded-md md:rounded-lg bg-amber-300/20 text-amber-700">
+                      <item.icon className="w-3 h-3 md:w-4 md:h-4" />
+                    </div>
+                    <div className="flex-1 flex justify-between items-center">
+                      <span className="text-gray-800 text-sm md:text-base font-medium">
+                        {item.days}
+                      </span>
+                      <span className="text-gray-700 text-xs md:text-sm font-medium">
+                        {item.time}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </motion.div>
 
           {/* Contact Form */}
@@ -300,9 +305,7 @@ export default function Contact() {
                   } focus:ring-2 focus:outline-none transition-all bg-white text-gray-900 placeholder-gray-400 text-sm md:text-base`}
                 ></textarea>
                 {errors.message && (
-                  <p className="mt-1 text-xs text-red-500">
-                    {errors.message}
-                  </p>
+                  <p className="mt-1 text-xs text-red-500">{errors.message}</p>
                 )}
               </div>
 

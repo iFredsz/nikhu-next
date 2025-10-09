@@ -133,8 +133,8 @@ export default function Contact() {
   },
   {
     icon: Mail,
-    text: "contact@nakastudio.com",
-    href: "mailto:contact@nakastudio.com",
+    text: "nikhustudio@gmail.com",
+    href: "mailto:nikhustudio@gmail.com",
     description: "Balasan dalam 24 jam",
   },
   {

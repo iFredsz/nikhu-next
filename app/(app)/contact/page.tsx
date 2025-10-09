@@ -65,7 +65,15 @@ export default function Contact() {
       throw new Error("Missing EmailJS environment variables");
     }
 
-    const result = await emailjs.send(serviceId, templateId, formData, publicKey);
+    // Kirim hanya variabel yang ada di template
+    const templateParams = {
+      name: formData.name || "",
+      email: formData.email || "",
+      subject: formData.subject || "",
+      message: formData.message || "",
+    };
+
+    const result = await emailjs.send(serviceId, templateId, templateParams, publicKey);
 
     if (result.status === 200) {
       toast.success("Pesan berhasil dikirim!");
@@ -81,6 +89,7 @@ export default function Contact() {
     setIsSubmitting(false);
   }
 };
+
 
 
   const openGoogleMaps = () => {

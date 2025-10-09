@@ -7,7 +7,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { FormEventHandler, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { doc, setDoc } from 'firebase/firestore'
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import LoadingText from '@/components/LoadingText'
 import { toast } from 'sonner'
 import { Eye, EyeOff } from 'lucide-react'
@@ -69,14 +69,21 @@ export default function SignupPage() {
   const [errorStatus, setErrorStatus] = useState('')
   const [success, setSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [signupData, setSignupData] = useState({ email: '', password: '' })
+  const [signupData, setSignupData] = useState({ name: '', email: '', password: '', confirm: '' })
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const router = useRouter()
 
   const handleSignup: FormEventHandler = async (e) => {
     e.preventDefault()
     setErrorStatus('')
     setSuccess(false)
+
+    if (signupData.password !== signupData.confirm) {
+      setErrorStatus('Password dan konfirmasi password tidak sama.')
+      toast.error('Password dan konfirmasi password tidak sama.')
+      return
+    }
 
     try {
       if (isRateLimited()) {
@@ -107,7 +114,14 @@ export default function SignupPage() {
       const email = response.user.email
       if (!email) throw new Error('Email tidak tersedia')
 
-      await setDoc(doc(db, 'users', uid), { email })
+      await setDoc(doc(db, 'users', uid), {
+        uid,
+        name: signupData.name,
+        email,
+        role: 'user',
+        createdAt: new Date().toISOString()
+      })
+
       await auth.signOut()
       recordAttempt()
 
@@ -153,7 +167,21 @@ export default function SignupPage() {
 
       <section>
         <form onSubmit={handleSignup}>
-          <div className="mb-6">
+          <div className="mb-4">
+            <label htmlFor="name" className="mb-2 block font-medium">
+              Name
+            </label>
+            <Input
+              type="text"
+              id="name"
+              placeholder="Name"
+              required
+              value={signupData.name}
+              onChange={(e) => setSignupData((prev) => ({ ...prev, name: e.target.value }))}
+            />
+          </div>
+
+          <div className="mb-4">
             <label htmlFor="email" className="mb-2 block font-medium">
               Email address
             </label>
@@ -167,7 +195,7 @@ export default function SignupPage() {
             />
           </div>
 
-          <div className="mb-12">
+          <div className="mb-4">
             <label htmlFor="password" className="mb-2 block font-medium">
               Password
             </label>
@@ -190,6 +218,29 @@ export default function SignupPage() {
             </div>
           </div>
 
+          <div className="mb-6">
+            <label htmlFor="confirm" className="mb-2 block font-medium">
+              Confirm Password
+            </label>
+            <div className="relative">
+              <Input
+                type={showConfirm ? 'text' : 'password'}
+                id="confirm"
+                placeholder="Confirm Password"
+                required
+                value={signupData.confirm}
+                onChange={(e) => setSignupData((prev) => ({ ...prev, confirm: e.target.value }))}
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                onClick={() => setShowConfirm((prev) => !prev)}
+              >
+                {showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+
           {errorStatus && <p className="mb-4 text-center text-destructive">{errorStatus}</p>}
           {success && (
             <p className="mb-4 text-center text-green-600">
@@ -199,7 +250,7 @@ export default function SignupPage() {
 
           <Button
             className="w-full"
-            disabled={isLoading || !signupData.email || !signupData.password}
+            disabled={isLoading || !signupData.name || !signupData.email || !signupData.password || !signupData.confirm}
             type="submit"
           >
             {isLoading ? <LoadingText /> : 'Sign up'}

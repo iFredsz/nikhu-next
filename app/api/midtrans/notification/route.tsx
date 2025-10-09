@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   const notificationJson = body
 
   let apiClient = new midtransClient.Snap({
-    isProduction: false,
+    isProduction: true,
     serverKey: process.env.MIDTRANS_SERVER,
     clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT,
   })

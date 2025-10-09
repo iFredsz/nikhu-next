@@ -919,7 +919,6 @@ export default function Page({ params }: { params: { slug: string } }) {
 
                     <div className="border-t-2 border-indigo-200 pt-3 mt-3">
                       <div className="flex justify-between items-center">
-                        <span className="font-bold text-gray-900 text-base">Total Bayar:</span>
                         <span className="text-2xl font-bold text-indigo-600">
                           {idrFormatter(total)}
                         </span>

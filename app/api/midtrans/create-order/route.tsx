@@ -9,6 +9,7 @@ import {
 } from '@/lib/actions/midtrans/generate-checkout-data'
 import { addNewOrder } from '@/lib/actions/firestore/add-new-order'
 import { Midtrans_Generate_Token, generateToken } from '@/lib/actions/midtrans/generate-token'
+import exp from 'constants'
 
 export async function POST(req: Request) {
   try {
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
       order_id: orderId,
       midtrans_order_id: orderId,
       updated_at: new Date().toISOString(),
-      expire_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), //cron job hapus 15 menit
+      expire_at: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes from now
     })
 
     console.log('=== ORDER CREATION SUCCESS ===')

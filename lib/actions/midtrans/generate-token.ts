@@ -14,7 +14,7 @@ export async function generateToken(
   uid: string,
 ): Promise<Midtrans_Generate_Token> {
   let snap = new midtransClient.Snap({
-    isProduction: true,
+    isProduction: false,
     serverKey: process.env.MIDTRANS_SERVER,
     clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT,
   })

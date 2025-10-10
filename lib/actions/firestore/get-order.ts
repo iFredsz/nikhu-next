@@ -9,12 +9,6 @@ export async function getOrder(uid: string, orderId: string) {
 
     if (docSnap.exists()) {
       const data = docSnap.data()
-      console.log('=== RAW FIRESTORE DATA ===')
-      console.log('Document ID:', orderId)
-      console.log('All fields:', Object.keys(data))
-      console.log('date field:', data.date)
-      console.log('created_at:', data.created_at)
-      console.log('updated_at:', data.updated_at)
       
       // Transform data dari Firestore ke format yang diharapkan komponen
       const originalCartItems = data.original_cart_items || []
@@ -29,37 +23,25 @@ export async function getOrder(uid: string, orderId: string) {
         slug: item.slug,
       }))
 
-      console.log('=== TRANSFORMED DATA ===')
-      console.log('bookingDetails length:', originalCartItems.length)
-      console.log('items length:', items.length)
-      
       // PERBAIKAN: Gunakan updated_at atau created_at jika date adalah serverTimestamp
       let displayDate = data.date
       if (data.date && data.date._methodName === 'serverTimestamp') {
         displayDate = data.updated_at || data.created_at
-        console.log('Using fallback date:', displayDate)
       }
 
-      const result = {
+      return {
         bookingDetails: originalCartItems,
         items: items,
         payment_status: data.payment_status || 'pending',
         total_quantity: data.total_quantity || originalCartItems.length,
         token: data.token,
-        date: displayDate, // Gunakan date yang sudah diperbaiki
+        date: displayDate,
         gross_amount: data.gross_amount,
         order_id: orderId,
-        created_at: data.created_at, // Tambahkan field ini
-        updated_at: data.updated_at, // Tambahkan field ini
+        created_at: data.created_at,
+        updated_at: data.updated_at,
       }
-
-      console.log('=== FINAL RESULT ===')
-      console.log('Result structure:', result)
-      console.log('Date to display:', result.date)
-      
-      return result
     } else {
-      console.log('Order document not found:', orderId)
       return null
     }
   } catch (error) {

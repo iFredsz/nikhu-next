@@ -45,6 +45,8 @@ type OrderData = {
   date: any
   gross_amount?: number
   order_id?: string
+  created_at?: any
+  updated_at?: any
 }
 
 export default function OrderContainer({ order_id, uid }: Props) {
@@ -169,10 +171,18 @@ export default function OrderContainer({ order_id, uid }: Props) {
     total_quantity, 
     token, 
     date, 
-    gross_amount 
+    gross_amount,
+    created_at,
+    updated_at 
   } = orderData
   
-  const formattedDate = firestoreDateFormatter(date)
+  // OPTIMIZED DATE HANDLING - sama seperti di OrdersCard
+  let displayDate = date
+  if (date && date._methodName === 'serverTimestamp') {
+    displayDate = updated_at || created_at
+  }
+  
+  const formattedDate = firestoreDateFormatter(displayDate)
 
   console.log('Items array:', items)
   console.log('Items is array?', Array.isArray(items))

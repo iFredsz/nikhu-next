@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getOrder } from '@/lib/actions/firestore/get-order'
 import { getProduct, Product } from '@/lib/actions/firestore/get-product'
 import { firestoreDateFormatter, idrFormatter } from '@/lib/utils'
@@ -12,6 +12,8 @@ import LoadingText from '@/components/LoadingText'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import DownloadReceipt from './DownloadReceipt'
 import { useEffect, useState, useCallback } from 'react'
+import { doc, onSnapshot } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 
 type Props = {
   order_id: string
@@ -47,6 +49,7 @@ type OrderData = {
 
 export default function OrderContainer({ order_id, uid }: Props) {
   const [productsData, setProductsData] = useState<{ [key: string]: ProductData }>({})
+  const queryClient = useQueryClient()
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['order', { order_id, uid }],
@@ -62,9 +65,49 @@ export default function OrderContainer({ order_id, uid }: Props) {
     },
   })
 
+  // REALTIME LISTENER - untuk payment_status, token, dan field penting lainnya
+  useEffect(() => {
+    console.log('🔄 Setting up realtime listener for payment status')
+    
+    const orderRef = doc(db, 'users', uid, 'orders', order_id)
+    
+    const unsubscribe = onSnapshot(orderRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const updatedData = snapshot.data()
+        console.log('🔥 ORDER UPDATED REALTIME')
+        console.log('   Payment Status:', updatedData.payment_status)
+        console.log('   Token:', updatedData.token)
+        
+        // Update React Query cache - FULL UPDATE untuk memastikan semua field terupdate
+        queryClient.setQueryData(['order', { order_id, uid }], (oldData: any) => {
+          if (!oldData) return updatedData
+          
+          // Full merge dengan priority ke data baru
+          const mergedData = {
+            ...oldData,
+            ...updatedData,  // Override dengan data terbaru
+            // Preserve bookingDetails jika tidak ada di updatedData
+            bookingDetails: updatedData.bookingDetails || oldData.bookingDetails,
+            items: updatedData.items || oldData.items,
+          }
+          
+          console.log('   Merged data:', mergedData)
+          return mergedData
+        })
+      }
+    }, (error) => {
+      console.error('❌ Error in order listener:', error)
+    })
+
+    return () => {
+      console.log('🧹 Cleanup order listener')
+      unsubscribe()
+    }
+  }, [order_id, uid, queryClient])
+
   const orderData = data as OrderData | undefined
 
-  // PERBAIKAN: Pisahkan fungsi fetchProducts
+  // Fetch products - TETAP PAKAI LOGIC ORIGINAL (sequential)
   const fetchProducts = useCallback(async (bookingDetails: any[]) => {
     console.log('Fetching products for booking details...')
     
@@ -92,11 +135,10 @@ export default function OrderContainer({ order_id, uid }: Props) {
     console.log('=== ORDER DATA UPDATED ===')
     console.log('Order data:', orderData)
     
-    // PERBAIKAN: Tambahkan check untuk bookingDetails
     if (orderData?.bookingDetails && orderData.bookingDetails.length > 0) {
       fetchProducts(orderData.bookingDetails)
     }
-  }, [orderData, fetchProducts]) // PERBAIKAN: Tambahkan dependency yang diperlukan
+  }, [orderData, fetchProducts])
 
   if (isLoading) {
     return (
@@ -117,6 +159,8 @@ export default function OrderContainer({ order_id, uid }: Props) {
 
   console.log('=== RENDERING ORDER CONTAINER ===')
   console.log('Order data for rendering:', orderData)
+  console.log('🔍 Current payment_status:', orderData.payment_status)
+  console.log('🔍 Has token:', !!orderData.token)
 
   const { 
     bookingDetails = [], 
@@ -130,7 +174,6 @@ export default function OrderContainer({ order_id, uid }: Props) {
   
   const formattedDate = firestoreDateFormatter(date)
 
-  // PERBAIKAN UTAMA: Safety check untuk reduce dengan fallback
   console.log('Items array:', items)
   console.log('Items is array?', Array.isArray(items))
   
@@ -144,7 +187,6 @@ export default function OrderContainer({ order_id, uid }: Props) {
 
   const totalOrder = idrFormatter(totalOrderNumber)
 
-  // PERBAIKAN: Gunakan bookingDetails dengan safety check
   const displayItems = (bookingDetails && bookingDetails.length > 0) ? bookingDetails : items
 
   console.log('Display items:', displayItems)
@@ -309,15 +351,37 @@ export default function OrderContainer({ order_id, uid }: Props) {
         <p>{formattedDate}</p>
       </div>
 
+      {/* REALTIME: Payment status success */}
       {payment_status === 'success' && <OrderSuccessPlaceholder />}
 
-      {/* PERBAIKAN: Hapus currentOrderData, fetch langsung di MidtransPayment */}
-      {payment_status !== 'success' && payment_status !== 'failure' && token && (
-        <MidtransPayment token={token} order_id={order_id} uid={uid} />
+      {/* REALTIME: Show payment button - Support pending dan status lainnya */}
+      {(payment_status === 'pending' || 
+        (payment_status !== 'success' && payment_status !== 'failure')) && 
+        token && (
+        <MidtransPayment 
+          key={`payment-${payment_status}-${token}`}
+          token={token} 
+          order_id={order_id} 
+          uid={uid} 
+        />
       )}
 
-      {payment_status !== 'success' && payment_status !== 'failure' && !token && (
+      {(payment_status === 'pending' || 
+        (payment_status !== 'success' && payment_status !== 'failure')) && 
+        !token && (
         <p className="text-yellow-600">Menunggu token pembayaran...</p>
+      )}
+
+      {/* Status failure */}
+      {payment_status === 'failure' && (
+        <div className="my-8 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-700 font-semibold text-center">
+            ❌ Pembayaran gagal
+          </p>
+          <p className="text-red-600 text-sm text-center mt-2">
+            Silakan coba lagi atau hubungi customer service.
+          </p>
+        </div>
       )}
     </>
   )

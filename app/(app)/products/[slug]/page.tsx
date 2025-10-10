@@ -35,7 +35,7 @@ type Addon = {
 
 type Voucher = {
   code: string
-  amount: number
+  percentage: number
   active: boolean
   maxUsage?: number
   currentUsage?: number
@@ -75,6 +75,7 @@ export default function Page({ params }: { params: { slug: string } }) {
   const [voucher, setVoucher] = useState("")
   const [discount, setDiscount] = useState(0)
   const [voucherError, setVoucherError] = useState("")
+  const [claimedVoucher, setClaimedVoucher] = useState<Voucher | null>(null)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
@@ -130,7 +131,7 @@ export default function Page({ params }: { params: { slug: string } }) {
         const unsubVouchers = onSnapshot(collection(db, 'vouchers'), (snapshot) => {
           const vouchersData = snapshot.docs.map(doc => ({
             code: doc.data().code,
-            amount: Number(doc.data().amount) || 0,
+            percentage: Number(doc.data().percentage) || 0,
             active: doc.data().active !== false,
             maxUsage: Number(doc.data().maxUsage) || 100,
             currentUsage: Number(doc.data().currentUsage) || 0
@@ -242,6 +243,28 @@ export default function Page({ params }: { params: { slug: string } }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookedTimesForSelectedDate, date])
 
+  // Calculate totals
+  const addonTotal = useMemo(() => {
+    return addons.reduce((sum, a) => {
+      if (a.type === 'fixed') {
+        return sum + (a.qty > 0 ? a.price * people * (selectedTimes.length || 1) : 0)
+      } else {
+        const total = Object.values(a.selectedSessions || {}).reduce((s, v) => s + v * a.price, 0)
+        return sum + total
+      }
+    }, 0)
+  }, [addons, people, selectedTimes.length])
+
+  // Auto-recalculate discount ketika people, selectedTimes, atau addons berubah
+  useEffect(() => {
+    if (claimedVoucher) {
+      const basePrice = productData ? productData.price * people * (selectedTimes.length || 1) : 0
+      const subtotal = basePrice + addonTotal
+      const discountAmount = Math.round((subtotal * claimedVoucher.percentage) / 100)
+      setDiscount(discountAmount)
+    }
+  }, [people, selectedTimes.length, addonTotal, claimedVoucher, productData])
+
   // Check if a time slot is available
   const isTimeAvailable = useCallback((time: string) => {
     return !BREAK_TIMES.includes(time) && !bookedTimesForSelectedDate.includes(time)
@@ -277,14 +300,24 @@ export default function Page({ params }: { params: { slug: string } }) {
       if (found.maxUsage && found.currentUsage && found.currentUsage >= found.maxUsage) {
         setVoucherError("Voucher sudah mencapai batas penggunaan maksimal")
         setDiscount(0)
+        setClaimedVoucher(null)
         return
       }
       
-      setDiscount(found.amount)
-      toast.success(`Voucher ${voucher} berhasil diklaim! Potongan ${idrFormatter(found.amount)}`)
+      // Hitung subtotal sebelum diskon
+      const basePrice = productData ? productData.price * people * (selectedTimes.length || 1) : 0
+      const subtotal = basePrice + addonTotal
+      
+      // Hitung diskon berdasarkan persentase
+      const discountAmount = Math.round((subtotal * found.percentage) / 100)
+      
+      setDiscount(discountAmount)
+      setClaimedVoucher(found)
+      toast.success(`Voucher ${voucher} berhasil diklaim! Diskon ${found.percentage}% (${idrFormatter(discountAmount)})`)
     } else {
       setVoucherError("Voucher tidak valid atau sudah tidak aktif")
       setDiscount(0)
+      setClaimedVoucher(null)
     }
   }
 
@@ -363,18 +396,6 @@ export default function Page({ params }: { params: { slug: string } }) {
       })
     )
   }
-
-  // Calculate totals
-  const addonTotal = useMemo(() => {
-    return addons.reduce((sum, a) => {
-      if (a.type === 'fixed') {
-        return sum + (a.qty > 0 ? a.price * people * (selectedTimes.length || 1) : 0)
-      } else {
-        const total = Object.values(a.selectedSessions || {}).reduce((s, v) => s + v * a.price, 0)
-        return sum + total
-      }
-    }, 0)
-  }, [addons, people, selectedTimes.length])
 
   const total = useMemo(() => {
     const basePrice = productData ? productData.price * people * (selectedTimes.length || 1) : 0
@@ -821,8 +842,14 @@ export default function Page({ params }: { params: { slug: string } }) {
                       <input
                         value={voucher}
                         onChange={e => {
-                          setVoucher(e.target.value.toUpperCase())
+                          const newValue = e.target.value.toUpperCase()
+                          setVoucher(newValue)
                           setVoucherError("")
+                          // Reset voucher jika input berubah
+                          if (claimedVoucher && newValue !== claimedVoucher.code) {
+                            setClaimedVoucher(null)
+                            setDiscount(0)
+                          }
                         }}
                         placeholder="Kode voucher (opsional)"
                         className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all uppercase"
@@ -830,19 +857,19 @@ export default function Page({ params }: { params: { slug: string } }) {
                       {voucherError && (
                         <p className="text-red-500 text-xs mt-2 font-medium">{voucherError}</p>
                       )}
-                      {discount > 0 && (
+                      {discount > 0 && claimedVoucher && (
                         <p className="text-green-600 text-xs mt-2 font-medium">
-                          ✓ Voucher aktif - Diskon {idrFormatter(discount)}
+                          ✓ Voucher aktif - Diskon {claimedVoucher.percentage}% ({idrFormatter(discount)})
                         </p>
                       )}
                     </div>
                     <Button
                       type="button"
                       onClick={handleClaimVoucher}
-                      disabled={!voucher}
+                      disabled={!voucher || (claimedVoucher?.code === voucher)}
                       className="px-6 py-3 bg-green-500 text-white hover:bg-green-600 rounded-xl whitespace-nowrap font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
-                      Klaim
+                      {claimedVoucher?.code === voucher ? "✓ Aktif" : "Klaim"}
                     </Button>
                   </div>
                 </div>

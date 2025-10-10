@@ -127,7 +127,7 @@ export default function CartButtonServer() {
                 <p className='text-right'>{idrFormatter(cartItems.total_price)}</p>
               </div>
               <p className='mb-5 text-center text-xs text-gray-500'>
-                Shipping, taxes, and discount codes calculated at checkout.
+                All orders calculated at checkout.
               </p>
 
               <Checkout

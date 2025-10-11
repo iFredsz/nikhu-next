@@ -1,15 +1,23 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  poweredByHeader: false, // sembunyikan header X-Powered-By
+  poweredByHeader: false, 
   swcMinify: true,
 
+  compiler: {
+
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+
   images: {
-    // izinkan semua gambar HTTPS (termasuk dari Google)
     remotePatterns: [
       {
         protocol: 'https',
         hostname: '**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**', 
       },
     ],
   },
@@ -33,7 +41,13 @@ const nextConfig = {
           // Matikan XSS Protection lawas
           { key: 'X-XSS-Protection', value: '0' },
           // Batasi izin fitur browser
-          { key: 'Permissions-Policy', value: 'geolocation=(), microphone=()' },
+          { key: 'Permissions-Policy', value: 'geolocation=(), microphone=(), camera=(), payment=()' },
+          // Tambahan perlindungan CSP (Content Security Policy) dasar
+          {
+            key: 'Content-Security-Policy',
+            value:
+              "default-src 'self'; script-src 'self' 'unsafe-inline' https:; img-src * blob: data:; style-src 'self' 'unsafe-inline' https:; font-src 'self' https: data:;",
+          },
         ],
       },
     ]

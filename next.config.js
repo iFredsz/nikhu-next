@@ -8,10 +8,9 @@ const csp = `
   img-src * blob: data:;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   font-src 'self' https://fonts.gstatic.com data:;
-  frame-src 'self' https://app.midtrans.com https://naka-studio.firebaseapp.com https://*.google.com https://*.firebaseapp.com;
-  child-src 'self' https://app.midtrans.com https://naka-studio.firebaseapp.com https://*.google.com https://*.firebaseapp.com;
+  frame-src 'self' https://app.midtrans.com https://api.midtrans.com https://naka-studio.firebaseapp.com https://*.google.com https://*.firebaseapp.com;
+  child-src 'self' https://app.midtrans.com https://api.midtrans.com https://naka-studio.firebaseapp.com https://*.google.com https://*.firebaseapp.com;
 `.replace(/\n/g, ' ')
-
 
 const nextConfig = {
   reactStrictMode: true,
@@ -21,9 +20,7 @@ const nextConfig = {
   compiler: { removeConsole: isProd },
 
   images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: '**' },
-    ],
+    remotePatterns: [{ protocol: 'https', hostname: '**' }],
   },
 
   async headers() {
@@ -31,12 +28,28 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: [
-          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          {
+            key: 'X-Frame-Options',
+            // SAMEORIGIN diganti karena app.midtrans.com perlu iframe cross-origin
+            value: 'ALLOW-FROM https://app.midtrans.com',
+          },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'geolocation=(), microphone=(), camera=(), payment=()' },
-          { key: 'Content-Security-Policy', value: csp },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'geolocation=(), microphone=(), camera=(), payment=()',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: csp,
+          },
         ],
       },
     ]

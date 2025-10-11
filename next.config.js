@@ -1,14 +1,15 @@
 /** @type {import('next').NextConfig} */
 const isProd = process.env.NODE_ENV === 'production'
 
-// ✅ Perluas CSP agar mengizinkan Google API & Midtrans
 const csp = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' https://www.gstatic.com https://www.googleapis.com https://www.googletagmanager.com https://apis.google.com https://app.midtrans.com;
+  script-src 'self' 'unsafe-inline' https://www.gstatic.com https://www.googleapis.com https://www.googletagmanager.com https://app.midtrans.com https://api.midtrans.com https://apis.google.com;
   connect-src 'self' https://firestore.googleapis.com https://firebase.googleapis.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://storage.googleapis.com wss:;
   img-src * blob: data:;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   font-src 'self' https://fonts.gstatic.com data:;
+  frame-src 'self' https://app.midtrans.com https://naka-studio.firebaseapp.com https://*.google.com https://*.firebaseapp.com;
+  child-src 'self' https://app.midtrans.com https://naka-studio.firebaseapp.com https://*.google.com https://*.firebaseapp.com;
 `.replace(/\n/g, ' ')
 
 const nextConfig = {
@@ -16,18 +17,11 @@ const nextConfig = {
   poweredByHeader: false,
   swcMinify: true,
 
-  compiler: {
-    // ✅ Hilangkan console.* di production
-    removeConsole: isProd,
-  },
+  compiler: { removeConsole: isProd },
 
   images: {
-    // izinkan semua gambar dari HTTPS (termasuk dari Google)
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
+      { protocol: 'https', hostname: '**' },
     ],
   },
 
@@ -40,12 +34,7 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'X-XSS-Protection', value: '0' },
-          {
-            key: 'Permissions-Policy',
-            value: 'geolocation=(), microphone=(), camera=(), payment=()',
-          },
-          // ✅ Tambahkan CSP aman dan fleksibel
+          { key: 'Permissions-Policy', value: 'geolocation=(), microphone=(), camera=(), payment=()' },
           { key: 'Content-Security-Policy', value: csp },
         ],
       },

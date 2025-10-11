@@ -415,7 +415,7 @@ export default function EditLayoutPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-8 text-gray-900">Manage Packages</h1>
+        <h1 className="text-2xl font-bold mb-8 text-gray-800">Manage Packages</h1>
 
         {/* Tabs Navigation */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">

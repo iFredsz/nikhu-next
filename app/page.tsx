@@ -298,7 +298,7 @@ export default function Home() {
       </section>
 
       {/* Portfolio Section */}
-      <section className="section-full-width mb-8 relative">
+      <section className="section-full-width md:py-0 py-12 mb-8 relative">
         <div className="container mx-auto px-4">
           {portfolioImages.length > 0 && (
             <h2 className="text-3xl font-bold mb-6 text-center">Hasil Karya Kami</h2>

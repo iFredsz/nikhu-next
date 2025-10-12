@@ -3,13 +3,49 @@ const isProd = process.env.NODE_ENV === 'production'
 
 const csp = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' https://www.gstatic.com https://www.googleapis.com https://www.googletagmanager.com https://app.midtrans.com https://api.midtrans.com https://apis.google.com;
-  connect-src 'self' https://app.midtrans.com https://api.midtrans.com https://firestore.googleapis.com https://firebase.googleapis.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://storage.googleapis.com wss:;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval'
+    https://www.gstatic.com
+    https://www.googleapis.com
+    https://www.googletagmanager.com
+    https://app.midtrans.com
+    https://api.midtrans.com
+    https://snap.midtrans.com
+    https://sandbox.midtrans.com
+    https://apis.google.com;
+  connect-src 'self'
+    https://app.midtrans.com
+    https://api.midtrans.com
+    https://snap.midtrans.com
+    https://sandbox.midtrans.com
+    https://firestore.googleapis.com
+    https://firebase.googleapis.com
+    https://*.googleapis.com
+    https://*.firebaseio.com
+    https://www.googleapis.com
+    https://identitytoolkit.googleapis.com
+    https://securetoken.googleapis.com
+    https://firebasestorage.googleapis.com
+    https://storage.googleapis.com
+    wss:;
   img-src * blob: data:;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   font-src 'self' https://fonts.gstatic.com data:;
-  frame-src 'self' https://app.midtrans.com https://api.midtrans.com https://naka-studio.firebaseapp.com https://*.google.com https://*.firebaseapp.com;
-  child-src 'self' https://app.midtrans.com https://api.midtrans.com https://naka-studio.firebaseapp.com https://*.google.com https://*.firebaseapp.com;
+  frame-src 'self'
+    https://app.midtrans.com
+    https://api.midtrans.com
+    https://snap.midtrans.com
+    https://sandbox.midtrans.com
+    https://naka-studio.firebaseapp.com
+    https://*.google.com
+    https://*.firebaseapp.com;
+  child-src 'self'
+    https://app.midtrans.com
+    https://api.midtrans.com
+    https://snap.midtrans.com
+    https://sandbox.midtrans.com
+    https://naka-studio.firebaseapp.com
+    https://*.google.com
+    https://*.firebaseapp.com;
 `.replace(/\n/g, ' ')
 
 const nextConfig = {
@@ -34,7 +70,7 @@ const nextConfig = {
           },
           {
             key: 'X-Frame-Options',
-            // SAMEORIGIN diganti karena app.midtrans.com perlu iframe cross-origin
+            // ✅ Ganti SAMEORIGIN → ALLOW-FROM untuk Midtrans iframe
             value: 'ALLOW-FROM https://app.midtrans.com',
           },
           { key: 'X-Content-Type-Options', value: 'nosniff' },

@@ -590,31 +590,32 @@ export default function Home() {
         <h2 className="text-2xl md:text-2xl font-bold mb-4">Dapatkan Tips Fotografi & Promo</h2>
         <p className="mb-4 md:mb-6 text-gray-700 text-sm md:text-base">Subscribe newsletter kami</p>
         <form
-          className="flex justify-center gap-2 flex-wrap max-w-xs mx-auto"
-          onSubmit={e => {
-            e.preventDefault();
-            handleSubscribe();
-          }}
-          aria-label="Form Newsletter"
-        >
-          <label htmlFor="newsletter-email" className="sr-only">Email Anda</label>
-          <input
-            id="newsletter-email"
-            type="email"
-            placeholder="Email Anda"
-            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            aria-label="Email untuk newsletter"
-          />
-          <button
-            className="px-4 py-2 bg-yellow-400 text-white font-semibold rounded-lg hover:bg-yellow-500 transition text-sm"
-            onClick={handleSubscribe}
-            aria-label="Subscribe ke newsletter"
-          >
-            Subscribe
-          </button>
-        </form>
+  className="flex justify-center gap-2 flex-wrap max-w-xs mx-auto"
+  onSubmit={e => {
+    e.preventDefault();
+    handleSubscribe();
+  }}
+  aria-label="Form Newsletter"
+>
+  <label htmlFor="newsletter-email" className="sr-only">Email Anda</label>
+  <input
+    id="newsletter-email"
+    type="email"
+    placeholder="Email Anda"
+    className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
+    value={email}
+    onChange={(e) => setEmail(e.target.value)}
+    aria-label="Email untuk newsletter"
+  />
+  <button
+    type="submit"
+    className="px-4 py-2 bg-yellow-400 text-white font-semibold rounded-lg hover:bg-yellow-500 transition text-sm"
+    aria-label="Subscribe ke newsletter"
+  >
+    Subscribe
+  </button>
+</form>
+
       </section>
     </>
   )

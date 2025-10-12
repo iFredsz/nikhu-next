@@ -21,7 +21,7 @@ export default function Header() {
         <Link href='/' className='hidden md:block'>
           <div className='relative w-52 h-12'>
   <Image
-    src='/nikhulogo.png'
+    src='/nikhulogo.webp'
     alt='Nikhu Studio'
     fill
     className='object-contain'

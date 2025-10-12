@@ -23,9 +23,15 @@ const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager(),
   }),
-  experimentalAutoDetectLongPolling: true,
-  experimentalForceLongPolling: false, 
 })
+
+// Aktifkan long polling otomatis (fix koneksi lambat / timeout)
+if (typeof window !== 'undefined') {
+  // @ts-ignore
+  window.FIREBASE_APPCHECK_DEBUG_TOKEN = true
+  // Tambahkan setting global untuk koneksi lambat
+  ;(globalThis as any).process = { ...process, env: { ...process.env, FIRESTORE_LONG_POLLING: 'true' } }
+}
 
 const auth = getAuth(app)
 

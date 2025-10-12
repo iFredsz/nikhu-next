@@ -21,11 +21,13 @@ const csp = `
     https://firebase.googleapis.com
     https://*.googleapis.com
     https://*.firebaseio.com
-    https://www.googleapis.com
+    https://*.googleusercontent.com
     https://identitytoolkit.googleapis.com
     https://securetoken.googleapis.com
     https://firebasestorage.googleapis.com
     https://storage.googleapis.com
+    wss://firestore.googleapis.com
+    wss://*.firebaseio.com
     wss:;
   img-src * blob: data:;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
@@ -35,7 +37,6 @@ const csp = `
     https://api.midtrans.com
     https://snap.midtrans.com
     https://sandbox.midtrans.com
-    https://naka-studio.firebaseapp.com
     https://*.google.com
     https://*.firebaseapp.com;
   child-src 'self'
@@ -43,16 +44,14 @@ const csp = `
     https://api.midtrans.com
     https://snap.midtrans.com
     https://sandbox.midtrans.com
-    https://naka-studio.firebaseapp.com
     https://*.google.com
     https://*.firebaseapp.com;
-`.replace(/\n/g, ' ')
+`.replace(/\s{2,}/g, ' ').trim()
 
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   swcMinify: true,
-
   compiler: { removeConsole: isProd },
 
   images: {
@@ -70,8 +69,8 @@ const nextConfig = {
           },
           {
             key: 'X-Frame-Options',
-            // ✅ Ganti SAMEORIGIN → ALLOW-FROM untuk Midtrans iframe
-            value: 'ALLOW-FROM https://app.midtrans.com',
+            
+            value: 'SAMEORIGIN',
           },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           {

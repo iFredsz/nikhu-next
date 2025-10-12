@@ -48,7 +48,7 @@ const Footer = () => {
               >
                 <div className="w-12 h-12 items-center justify-center overflow-hidden">
                   <Image
-                    src="/logostudio.png"
+                    src="/logostudio.webp"
                     alt="Nikhu Studio"
                     width={48}
                     height={48}

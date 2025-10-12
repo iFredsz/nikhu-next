@@ -27,6 +27,7 @@ const subtitles = [
   "Abadikan Momen Terbaikmu",
   "Fotografi Profesional dengan Sentuhan Artistik",
 ]
+
 interface Testimonial {
   message: string;
   name: string;
@@ -34,6 +35,7 @@ interface Testimonial {
   rating: number;
   role: string;
 }
+
 interface Portfolio {
   id: string
   title: string
@@ -41,10 +43,7 @@ interface Portfolio {
 }
 
 export default function Home() {
-
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
-  const testimonialTrackRef = useRef<HTMLDivElement>(null);
-
   const [subtitleIndex, setSubtitleIndex] = useState(0)
   const [selectedImg, setSelectedImg] = useState<string | null>(null)
   const [portfolioImages, setPortfolioImages] = useState<Portfolio[]>([])
@@ -78,7 +77,7 @@ export default function Home() {
     return () => unsub()
   }, [])
 
-    // Load testimonials
+  // Load testimonials
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "testimonials"), (snapshot) => {
       const data = snapshot.docs.map((doc) => doc.data() as Testimonial);
@@ -87,14 +86,9 @@ export default function Home() {
     return () => unsub();
   }, []);
 
-  // Setup testimonial animation
+  // Testimonial animation - no DOM manipulation to prevent CLS
   useEffect(() => {
-    if (testimonialTrackRef.current && testimonials.length > 0) {
-      const track = testimonialTrackRef.current;
-      // Duplicate content for seamless loop
-      track.innerHTML = track.innerHTML + track.innerHTML;
-      
-      // Add dynamic scroll animation
+    if (testimonials.length > 0) {
       const style = document.createElement('style');
       style.textContent = `
         @keyframes scroll {
@@ -163,61 +157,70 @@ export default function Home() {
 
   // Newsletter handler
   const handleSubscribe = () => {
-  if (!email) {
-    toast.error("Masukkan email terlebih dahulu.")
-    return
+    if (!email) {
+      toast.error("Masukkan email terlebih dahulu.")
+      return
+    }
+
+    // Simpan ke database / kirim ke API sesuai kebutuhan
+    console.log("Subscribed with email:", email)
+
+    toast.success("Terima kasih sudah subscribe!")
+    setEmail("")
   }
-
-  // Simpan ke database / kirim ke API sesuai kebutuhan
-  console.log("Subscribed with email:", email)
-
-  toast.success("Terima kasih sudah subscribe!")
-  setEmail("")
-}
-
 
   return (
     <>
-    {/* Hero Section */}
-<section className="section-full-width grid grid-cols-1 items-center md:grid-cols-2 md:mt-12 mt-16 md:mb-4 mb-16 overflow-hidden">
-  {/* Text */}
-  <div className="mx-auto mb-12 mt-8 flex max-w-[600px] flex-col items-center text-center md:m-0 md:max-w-none md:items-start md:text-left md:pr-[10%]">
-    <h1 className="mb-4 md:ml-10 md:text-3xl text-2xl font-bold text-gray-800">
-      Momentmu, Lensa Kami 🙂
-    </h1>
+      {/* Hero Section */}
+      <section className="section-full-width grid grid-cols-1 items-center md:grid-cols-2 md:mt-12 mt-16 md:mb-4 mb-16 overflow-hidden">
+        {/* Text */}
+        <div className="mx-auto mb-12 mt-8 flex max-w-[600px] flex-col items-center text-center md:m-0 md:max-w-none md:items-start md:text-left md:pr-[10%]">
+          <h1 className="mb-4 md:ml-10 md:text-3xl text-2xl font-bold text-gray-800">
+            Momentmu, Lensa Kami 🙂
+          </h1>
 
-    <AnimatePresence mode="wait">
-      <motion.p
-        key={subtitleIndex}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={{ duration: 0.5 }}
-        className="mb-8 md:ml-10 text-md min-h-[60px] flex items-center justify-center md:justify-start text-gray-600 mt-4"
-      >
-        {subtitles[subtitleIndex]}
-      </motion.p>
-    </AnimatePresence>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={subtitleIndex}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5 }}
+              className="mb-8 md:ml-10 text-md min-h-[60px] flex items-center justify-center md:justify-start text-gray-600 mt-4"
+            >
+              {subtitles[subtitleIndex]}
+            </motion.p>
+          </AnimatePresence>
 
-    <Button asChild className="md:ml-10 px-12 py-3">
-      <Link href="/products">Booking Now</Link>
-    </Button>
-  </div>
+          <Button asChild className="md:ml-10 px-12 py-3">
+            <Link href="/products">Booking Now</Link>
+          </Button>
+        </div>
 
-  {/* Hero Image */}
-  <div className="relative w-full flex justify-center md:justify-end">
-    <motion.img
-      src="/fotografer.png"
-      alt="Fotografer"
-      className="max-w-[600px] w-full object-cover md:mr-10"
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      whileHover={{ scale: 1.05, rotate: 1 }}
-      transition={{ duration: 0.8, type: 'spring', stiffness: 100 }}
-    />
-  </div>
-</section>
+        {/* Hero Image */}
+        <div className="relative w-full flex justify-center md:justify-end">
+          <motion.div
+            className="relative w-full max-w-[600px] md:mr-10"
+            style={{ aspectRatio: '600/400' }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ scale: 1.05, rotate: 1 }}
+            transition={{ duration: 0.8, type: 'spring', stiffness: 100 }}
+          >
+            <Image
+  src="/fotografer.webp"
+  alt="Fotografer profesional dengan kamera"
+  width={600}
+  height={611}
+  priority
+  fetchPriority="high"
+  quality={90}
+  className="object-contain rounded-lg"
+/>
 
+          </motion.div>
+        </div>
+      </section>
 
       {/* Portfolio Section */}
       <section className="section-full-width py-16 relative">
@@ -280,22 +283,24 @@ export default function Home() {
                 className="px-2"
               >
                 {portfolioImages.map((img) => (
-                 <SwiperSlide key={img.id}>
-  <div 
-    className="cursor-pointer"
-    onClick={() => setSelectedImg(img.url)}
-  >
-    <div className="relative w-full h-72 sm:h-80 md:h-96 lg:h-[500px] overflow-hidden rounded-xl md:rounded-2xl shadow-lg">
-      <Image
-        src={img.url}
-        alt={img.title || "Portfolio"}
-        fill
-        className="object-cover"
-        sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-      />
-    </div>
-  </div>
-</SwiperSlide>
+                  <SwiperSlide key={img.id}>
+                    <div 
+                      className="cursor-pointer"
+                      onClick={() => setSelectedImg(img.url)}
+                    >
+                      <div className="relative w-full aspect-[4/5] overflow-hidden rounded-xl md:rounded-2xl shadow-lg">
+                        <Image
+                          src={img.url}
+                          alt={img.title || "Portfolio"}
+                          fill
+                          loading="lazy"
+                          quality={85}
+                          className="object-cover hover:scale-105 transition-transform duration-300"
+                          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        />
+                      </div>
+                    </div>
+                  </SwiperSlide>
                 ))}
               </Swiper>
             </div>
@@ -330,24 +335,24 @@ export default function Home() {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.8, opacity: 0 }}
                 onClick={(e) => e.stopPropagation()}
-                className="relative w-full max-w-4xl max-h-[85vh]"
+                className="relative w-full max-w-4xl aspect-video"
               >
-                <div className="relative w-full h-0 pb-[56.25%]">
-                  <Image
-                    src={selectedImg}
-                    alt="Preview"
-                    fill
-                    className="rounded-lg shadow-2xl object-contain"
-                    priority
-                  />
-                </div>
+                <Image
+                  src={selectedImg}
+                  alt="Preview"
+                  fill
+                  quality={95}
+                  className="rounded-lg shadow-2xl object-contain"
+                  priority
+                  sizes="(max-width: 768px) 100vw, 1200px"
+                />
               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
       </section>
 
-       {/* Paket & Booking CTA */}
+      {/* Paket & Booking CTA */}
       <section className="section-full-width py-20 bg-gradient-to-r from-gray-700 via-gray-500 to-gray-400 text-white relative overflow-hidden">
         {/* Decorative Shapes */}
         <motion.div
@@ -374,149 +379,100 @@ export default function Home() {
           </p>
 
           <Link href="/products">
-      <motion.div
-        whileHover={{ scale: 1.05, boxShadow: "0px 0px 15px rgba(255,255,255,0.5)" }}
-        whileTap={{ scale: 0.95 }}
-        className="inline-block px-10 py-4 bg-white text-yellow-500 font-bold rounded-full shadow-lg hover:bg-yellow-100 transition-all cursor-pointer"
-      >Booking Now</motion.div>
-    </Link>
+            <motion.div
+              whileHover={{ scale: 1.05, boxShadow: "0px 0px 15px rgba(255,255,255,0.5)" }}
+              whileTap={{ scale: 0.95 }}
+              className="inline-block px-10 py-4 bg-white text-yellow-500 font-bold rounded-full shadow-lg hover:bg-yellow-100 transition-all cursor-pointer"
+            >
+              Booking Now
+            </motion.div>
+          </Link>
         </div>
       </section>
 
-     {/* Testimonials */}
-{testimonials.length > 0 && (
-  <section
-    className="section-full-width py-16 text-center relative overflow-hidden"
-    style={{
-      background: "#f3f4f6",
-    }}
-  >
-    <h2 className="text-3xl md:text-4xl font-bold mb-12 text-gray-800">
-      Apa Kata Klien Kami
-    </h2>
+      {/* Testimonials */}
+      {testimonials.length > 0 && (
+        <section
+          className="section-full-width py-16 text-center relative overflow-hidden"
+          style={{
+            background: "#f3f4f6",
+          }}
+        >
+          <h2 className="text-3xl md:text-4xl font-bold mb-12 text-gray-800">
+            Apa Kata Klien Kami
+          </h2>
 
-    <div className="testimonial-container overflow-hidden py-4">
-      <div 
-        className="testimonial-track"
-        style={{ 
-          '--testimonial-count': testimonials.length,
-          '--card-width': '340px',
-          '--card-gap': '24px'
-        } as React.CSSProperties}
-      >
-        {/* Duplicate testimonials 2x saja tapi dengan teknik yang benar */}
-        {testimonials.map((t, i) => (
-          <div
-            key={`original-${i}`}
-            className="testimonial-card"
-          >
-            {/* Avatar */}
-            {t.photo ? (
-              <div className="relative w-16 h-16 mx-auto mb-4">
-                <Image
-                  src={t.photo}
-                  alt={t.name}
-                  fill
-                  className="rounded-full object-cover border-2 border-gray-300"
-                />
-              </div>
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
-                <User className="text-gray-600 w-8 h-8" />
-              </div>
-            )}
-
-            {/* Message */}
-            <p className="text-gray-700 italic mb-4">
-              &ldquo;{t.message}&rdquo;
-            </p>
-
-            {/* Rating */}
-            <div className="flex justify-center mb-2 text-yellow-500">
-              {Array.from({ length: 5 }).map((_, idx) => (
-                <svg
-                  key={idx}
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill={idx < t.rating ? "currentColor" : "none"}
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  className="w-5 h-5"
+          <div className="testimonial-container overflow-hidden py-4" style={{ minHeight: '300px' }}>
+            <div 
+              className="testimonial-track"
+              style={{ 
+                '--testimonial-count': testimonials.length,
+                '--card-width': '340px',
+                '--card-gap': '24px'
+              } as React.CSSProperties}
+            >
+              {/* Render 2x untuk seamless loop */}
+              {[...testimonials, ...testimonials].map((t, i) => (
+                <div
+                  key={`testimonial-${i}`}
+                  className="testimonial-card"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.003 6.145h6.462c.969 0 1.371 1.24.588 1.81l-5.234 3.805 2.003 6.145c.3.921-.755 1.688-1.539 1.118l-5.233-3.804-5.233 3.804c-.783.57-1.838-.197-1.539-1.118l2.003-6.145-5.234-3.805c-.783-.57-.38-1.81.588-1.81h6.462l2.003-6.145z"
-                  />
-                </svg>
+                  {/* Avatar dengan aspect ratio tetap */}
+                  {t.photo ? (
+                    <div className="relative w-16 h-16 mx-auto mb-4">
+                      <Image
+                        src={t.photo}
+                        alt={t.name}
+                        fill
+                        loading="lazy"
+                        quality={75}
+                        className="rounded-full object-cover border-2 border-gray-300"
+                        sizes="64px"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
+                      <User className="text-gray-600 w-8 h-8" />
+                    </div>
+                  )}
+
+                  {/* Message dengan min-height untuk prevent CLS */}
+                  <p className="text-gray-700 italic mb-4 min-h-[60px]">
+                    &ldquo;{t.message}&rdquo;
+                  </p>
+
+                  {/* Rating */}
+                  <div className="flex justify-center mb-2 text-yellow-500">
+                    {Array.from({ length: 5 }).map((_, idx) => (
+                      <svg
+                        key={idx}
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill={idx < t.rating ? "currentColor" : "none"}
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        className="w-5 h-5"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.003 6.145h6.462c.969 0 1.371 1.24.588 1.81l-5.234 3.805 2.003 6.145c.3.921-.755 1.688-1.539 1.118l-5.233-3.804-5.233 3.804c-.783.57-1.838-.197-1.539-1.118l2.003-6.145-5.234-3.805c-.783-.57-.38-1.81.588-1.81h6.462l2.003-6.145z"
+                        />
+                      </svg>
+                    ))}
+                  </div>
+
+                  {/* Name + Role */}
+                  <h4 className="font-semibold text-gray-800">{t.name}</h4>
+                  <span className="text-sm text-gray-500">{t.role}</span>
+                </div>
               ))}
             </div>
-
-            {/* Name + Role */}
-            <h4 className="font-semibold text-gray-800">{t.name}</h4>
-            <span className="text-sm text-gray-500">{t.role}</span>
           </div>
-        ))}
-        
-        {/* Duplicate yang SEAMLESS - tanpa gap */}
-        {testimonials.map((t, i) => (
-          <div
-            key={`duplicate-${i}`}
-            className="testimonial-card"
-          >
-            {/* Avatar */}
-            {t.photo ? (
-              <div className="relative w-16 h-16 mx-auto mb-4">
-                <Image
-                  src={t.photo}
-                  alt={t.name}
-                  fill
-                  className="rounded-full object-cover border-2 border-gray-300"
-                />
-              </div>
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
-                <User className="text-gray-600 w-8 h-8" />
-              </div>
-            )}
+        </section>
+      )}
 
-            {/* Message */}
-            <p className="text-gray-700 italic mb-4">
-              &ldquo;{t.message}&rdquo;
-            </p>
-
-            {/* Rating */}
-            <div className="flex justify-center mb-2 text-yellow-500">
-              {Array.from({ length: 5 }).map((_, idx) => (
-                <svg
-                  key={idx}
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill={idx < t.rating ? "currentColor" : "none"}
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  className="w-5 h-5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.003 6.145h6.462c.969 0 1.371 1.24.588 1.81l-5.234 3.805 2.003 6.145c.3.921-.755 1.688-1.539 1.118l-5.233-3.804-5.233 3.804c-.783.57-1.838-.197-1.539-1.118l2.003-6.145-5.234-3.805c-.783-.57-.38-1.81.588-1.81h6.462l2.003-6.145z"
-                  />
-                </svg>
-              ))}
-            </div>
-
-            {/* Name + Role */}
-            <h4 className="font-semibold text-gray-800">{t.name}</h4>
-            <span className="text-sm text-gray-500">{t.role}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-)}
-
- {/* Why Choose Us */}
+      {/* Why Choose Us */}
       <section className="section-full-width py-16 bg-[#f3f4f6]">
         <div className="container mx-auto text-center px-4">
           <motion.h2
@@ -601,7 +557,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
 
       {/* Newsletter */}
       <section className="section-full-width bg-gradient-to-b from-[#f3f4f6] to-white py-8 md:py-16 text-center px-4">

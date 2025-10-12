@@ -35,7 +35,7 @@ export default function MobileMenu() {
             <Link href='/' onClick={handleClose}>
               <div className='flex items-center gap-2'>
                 <Image
-                  src='/nikhulogo.png'
+                  src='/nikhulogo.webp'
                   alt='Nikhu Studio Logo'
                   width={120}
                   height={40}

@@ -1,11 +1,12 @@
 import { initializeApp } from 'firebase/app'
+import { getAuth } from 'firebase/auth'
 import {
   getFirestore,
   initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
 } from 'firebase/firestore'
-import { getAuth } from 'firebase/auth'
 
-// Web app's Firebase configuration
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_APIKEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTHDOMAIN,
@@ -16,14 +17,15 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENTID,
 }
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig)
 
-// Initialize Firestore with settings to handle long polling
 const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+  }),
   experimentalAutoDetectLongPolling: true,
+  experimentalForceLongPolling: false, 
 })
-
 
 const auth = getAuth(app)
 

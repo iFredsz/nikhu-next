@@ -20,7 +20,7 @@ import 'swiper/css/pagination'
 
 // Firebase
 import { db } from '../lib/firebase'
-import { collection, onSnapshot } from 'firebase/firestore'
+import { collection, onSnapshot, addDoc } from 'firebase/firestore'
 
 const subtitles = [
   "Kreatif, Memukau, dan Tak Terlupakan",
@@ -170,15 +170,24 @@ export default function Home() {
   }, [selectedImg])
 
   // Newsletter handler
-  const handleSubscribe = () => {
-    if (!email) {
-      toast.error("Masukkan email terlebih dahulu.")
-      return
-    }
-    // Simpan ke database / kirim ke API sesuai kebutuhan
+  const handleSubscribe = async () => {
+  if (!email) {
+    toast.error("Masukkan email terlebih dahulu.")
+    return
+  }
+
+  try {
+    await addDoc(collection(db, "newsletter"), {
+      email,
+      createdAt: new Date(),
+    });
     toast.success("Terima kasih sudah subscribe!")
     setEmail("")
+  } catch (error) {
+    console.error("Error menyimpan email:", error)
+    toast.error("Gagal subscribe, coba lagi.")
   }
+}
 
   return (
     <>

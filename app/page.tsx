@@ -423,7 +423,8 @@ export default function Home() {
                       <Image
                         src={t.photo}
                         alt={t.name}
-                        fill
+                         width={64}
+                        height={64}
                         loading="lazy"
                         quality={75}
                         className="rounded-full object-cover border-2 border-gray-300"

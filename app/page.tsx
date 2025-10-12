@@ -58,6 +58,30 @@ export default function Home() {
   const nextRef = useRef<HTMLButtonElement>(null)
   const swiperRef = useRef<any>(null)
 
+  // Add CSS animation
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .animate-fadeInUp {
+        animation: fadeInUp 0.4s ease-out forwards;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   // Ambil data portfolio dari Firestore
   useEffect(() => {
     setIsLoading(true)
@@ -221,15 +245,11 @@ export default function Home() {
           </Button>
         </div>
 
-        {/* Hero Image - Optimized untuk mobile */}
+        {/* Hero Image - Ultra optimized untuk mobile LCP */}
         <div className="relative w-full flex justify-center md:justify-end">
-          <motion.div
+          <div
             className="relative w-full max-w-[600px] md:mr-10"
             style={{ aspectRatio: '600/611' }}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            whileHover={{ scale: 1.05, rotate: 1 }}
-            transition={{ duration: 0.8, type: 'spring', stiffness: 100 }}
           >
             <Image
               src="/fotografer.webp"
@@ -238,9 +258,9 @@ export default function Home() {
               height={611}
               priority
               fetchPriority="high"
-              quality={85}
+              quality={75}
               className="object-contain rounded-lg"
-              sizes="(max-width: 640px) 90vw, (max-width: 768px) 80vw, 600px"
+              sizes="(max-width: 640px) 100vw, (max-width: 768px) 80vw, 600px"
             />
             
             {/* Camera Flash Animation - Smooth without freeze */}
@@ -290,10 +310,10 @@ export default function Home() {
               }}
             />
             
-            {/* Lens Flare Effect */}
+            {/* Lens Flare Effect - Only on larger screens for performance */}
             <motion.div
               key={`flare-${flashTrigger}`}
-              className="absolute top-1/3 right-1/3 w-20 h-20 rounded-full pointer-events-none"
+              className="hidden md:block absolute top-1/3 right-1/3 w-20 h-20 rounded-full pointer-events-none"
               style={{
                 background: 'radial-gradient(circle, rgba(255,255,255,0.6) 0%, rgba(255,200,100,0.2) 50%, transparent 70%)',
                 filter: 'blur(8px)',
@@ -314,7 +334,7 @@ export default function Home() {
                 ease: "easeOut"
               }}
             />
-          </motion.div>
+          </div>
         </div>
       </section>
 
@@ -392,10 +412,10 @@ export default function Home() {
                           src={img.url}
                           alt={img.title || "Portfolio"}
                           fill
-                          loading={index < 2 ? "eager" : "lazy"}
-                          quality={80}
+                          loading={index === 0 ? "eager" : "lazy"}
+                          quality={75}
                           className="object-cover hover:scale-105 transition-transform duration-300"
-                          sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, 400px"
+                          sizes="(max-width: 640px) 100vw, (max-width: 768px) 48vw, (max-width: 1024px) 32vw, 380px"
                         />
                       </div>
                     </div>
@@ -451,9 +471,9 @@ export default function Home() {
         </AnimatePresence>
       </section>
 
-      {/* Paket & Booking CTA */}
+      {/* Paket & Booking CTA - Simplified for performance */}
       <section className="section-full-width py-20 bg-gradient-to-r from-gray-700 via-gray-500 to-gray-400 text-white relative overflow-hidden">
-        {/* Decorative Shapes - reduced animation complexity */}
+        {/* Decorative Shapes - Static for better performance */}
         <div className="absolute top-[-80px] left-[-80px] w-72 h-72 bg-white/20 rounded-full blur-3xl" />
         <div className="absolute bottom-[-60px] right-[-60px] w-64 h-64 bg-white/10 rounded-full blur-3xl" />
 
@@ -467,14 +487,8 @@ export default function Home() {
             <span className="font-bold text-yellow-300">Rp 30.000</span>! Cocok untuk pre-wedding, family, portrait, dan semua momen spesialmu.
           </p>
 
-          <Link href="/products">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="inline-block px-10 py-4 bg-white text-yellow-500 font-bold rounded-full shadow-lg hover:bg-yellow-100 transition-all cursor-pointer"
-            >
-              Booking Now
-            </motion.div>
+          <Link href="/products" className="inline-block px-10 py-4 bg-white text-yellow-500 font-bold rounded-full shadow-lg hover:bg-yellow-100 transition-colors">
+            Booking Now
           </Link>
         </div>
       </section>
@@ -561,7 +575,7 @@ export default function Home() {
         </section>
       )}
 
-      {/* Why Choose Us */}
+      {/* Why Choose Us - Reduced animations for performance */}
       <section className="section-full-width py-16 bg-[#f3f4f6]">
         <div className="container mx-auto text-center px-4">
           <h2 className="text-3xl md:text-4xl font-bold mb-12">
@@ -595,13 +609,10 @@ export default function Home() {
                 bgColor: "bg-pink-400",
               },
             ].map((item, idx) => (
-              <motion.div
+              <div
                 key={idx}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{ delay: idx * 0.1, duration: 0.4 }}
-                className={`p-6 rounded-2xl shadow-lg ${item.bgColor}`}
+                className={`p-6 rounded-2xl shadow-lg ${item.bgColor} opacity-0 animate-fadeInUp`}
+                style={{ animationDelay: `${idx * 100}ms` }}
               >
                 {/* Icon */}
                 <div className="flex justify-center mb-3">
@@ -609,7 +620,7 @@ export default function Home() {
                 </div>
                 <h4 className="text-xl font-semibold mb-2 text-white">{item.title}</h4>
                 <p className="text-white">{item.desc}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>

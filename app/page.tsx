@@ -45,6 +45,8 @@ interface Portfolio {
 export default function Home() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [subtitleIndex, setSubtitleIndex] = useState(0)
+  const [flashTrigger, setFlashTrigger] = useState(0)
+  const [isDoubleFlash, setIsDoubleFlash] = useState(false)
   const [selectedImg, setSelectedImg] = useState<string | null>(null)
   const [portfolioImages, setPortfolioImages] = useState<Portfolio[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -120,15 +122,37 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Handle Swiper navigation initialization
+  // Camera Flash Animation - Random single/double flash without freeze
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    const triggerFlash = () => {
+      const willDoubleFlash = Math.random() > 0.5;
+      setIsDoubleFlash(willDoubleFlash);
+      setFlashTrigger(prev => prev + 1);
+      
+      // Random interval between 3-6 seconds for next flash
+      const nextDelay = 3000 + Math.random() * 3000;
+      timeoutId = setTimeout(triggerFlash, nextDelay);
+    };
+    
+    // Start first flash after 2 seconds
+    timeoutId = setTimeout(triggerFlash, 2000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [])
+
+  // Handle Swiper navigation initialization - dengan debounce untuk prevent forced reflow
   const updateSwiperNavigation = useCallback((swiper: any) => {
-    if (swiper && swiper.params.navigation) {
-      swiper.params.navigation.prevEl = prevRef.current
-      swiper.params.navigation.nextEl = nextRef.current
-      swiper.navigation.destroy()
-      swiper.navigation.init()
-      swiper.navigation.update()
-    }
+    requestAnimationFrame(() => {
+      if (swiper && swiper.params && swiper.params.navigation && swiper.navigation) {
+        swiper.params.navigation.prevEl = prevRef.current
+        swiper.params.navigation.nextEl = nextRef.current
+        swiper.navigation.destroy()
+        swiper.navigation.init()
+        swiper.navigation.update()
+      }
+    })
   }, [])
 
   const handleSwiperInit = useCallback((swiper: any) => {
@@ -197,27 +221,99 @@ export default function Home() {
           </Button>
         </div>
 
-        {/* Hero Image */}
+        {/* Hero Image - Optimized untuk mobile */}
         <div className="relative w-full flex justify-center md:justify-end">
           <motion.div
             className="relative w-full max-w-[600px] md:mr-10"
-            style={{ aspectRatio: '600/400' }}
+            style={{ aspectRatio: '600/611' }}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             whileHover={{ scale: 1.05, rotate: 1 }}
             transition={{ duration: 0.8, type: 'spring', stiffness: 100 }}
           >
             <Image
-  src="/fotografer.webp"
-  alt="Fotografer profesional dengan kamera"
-  width={600}
-  height={611}
-  priority
-  fetchPriority="high"
-  quality={90}
-  className="object-contain rounded-lg"
-/>
-
+              src="/fotografer.webp"
+              alt="Fotografer profesional dengan kamera"
+              width={600}
+              height={611}
+              priority
+              fetchPriority="high"
+              quality={85}
+              className="object-contain rounded-lg"
+              sizes="(max-width: 640px) 90vw, (max-width: 768px) 80vw, 600px"
+            />
+            
+            {/* Camera Flash Animation - Smooth without freeze */}
+            <motion.div
+              key={`flash-${flashTrigger}`}
+              className="absolute inset-0 bg-white rounded-lg pointer-events-none"
+              initial={{ opacity: 0 }}
+              animate={{ 
+                opacity: isDoubleFlash 
+                  ? [0, 0.95, 0.3, 0.95, 0] 
+                  : [0, 0.95, 0],
+              }}
+              transition={{
+                duration: isDoubleFlash ? 0.6 : 0.3,
+                times: isDoubleFlash 
+                  ? [0, 0.15, 0.35, 0.5, 1] 
+                  : [0, 0.3, 1],
+                ease: "easeOut"
+              }}
+              style={{
+                mixBlendMode: 'screen',
+              }}
+            />
+            
+            {/* Flash Light Beam Effect */}
+            <motion.div
+              key={`beam-${flashTrigger}`}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 rounded-full blur-3xl pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,200,0.3) 40%, rgba(255,255,255,0) 70%)',
+              }}
+              initial={{ opacity: 0, scale: 0.3 }}
+              animate={{ 
+                opacity: isDoubleFlash
+                  ? [0, 1, 0.4, 1, 0]
+                  : [0, 1, 0],
+                scale: isDoubleFlash
+                  ? [0.3, 1.5, 1, 2, 2.5]
+                  : [0.3, 2, 2.5],
+              }}
+              transition={{
+                duration: isDoubleFlash ? 0.7 : 0.4,
+                times: isDoubleFlash
+                  ? [0, 0.15, 0.35, 0.5, 1]
+                  : [0, 0.4, 1],
+                ease: "easeOut"
+              }}
+            />
+            
+            {/* Lens Flare Effect */}
+            <motion.div
+              key={`flare-${flashTrigger}`}
+              className="absolute top-1/3 right-1/3 w-20 h-20 rounded-full pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle, rgba(255,255,255,0.6) 0%, rgba(255,200,100,0.2) 50%, transparent 70%)',
+                filter: 'blur(8px)',
+              }}
+              initial={{ opacity: 0, x: 0, y: 0 }}
+              animate={{ 
+                opacity: isDoubleFlash
+                  ? [0, 0.8, 0.3, 0.8, 0]
+                  : [0, 0.8, 0],
+                x: [0, 30, 50],
+                y: [0, 20, 30],
+                scale: isDoubleFlash
+                  ? [0.5, 1, 0.8, 1.2, 1.3]
+                  : [0.5, 1.2, 1.3],
+              }}
+              transition={{
+                duration: isDoubleFlash ? 0.6 : 0.35,
+                ease: "easeOut"
+              }}
+            />
           </motion.div>
         </div>
       </section>
@@ -237,6 +333,7 @@ export default function Home() {
             <div className="relative">
               <button
                 ref={prevRef}
+                aria-label="Previous slide"
                 className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white p-3 rounded-full z-10 shadow-lg transition-all opacity-70 hover:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed"
                 disabled={portfolioImages.length <= 1}
               >
@@ -245,6 +342,7 @@ export default function Home() {
 
               <button
                 ref={nextRef}
+                aria-label="Next slide"
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white p-3 rounded-full z-10 shadow-lg transition-all opacity-70 hover:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed"
                 disabled={portfolioImages.length <= 1}
               >
@@ -281,8 +379,9 @@ export default function Home() {
                   },
                 }}
                 className="px-2"
+                watchSlidesProgress={true}
               >
-                {portfolioImages.map((img) => (
+                {portfolioImages.map((img, index) => (
                   <SwiperSlide key={img.id}>
                     <div 
                       className="cursor-pointer"
@@ -293,10 +392,10 @@ export default function Home() {
                           src={img.url}
                           alt={img.title || "Portfolio"}
                           fill
-                          loading="lazy"
-                          quality={85}
+                          loading={index < 2 ? "eager" : "lazy"}
+                          quality={80}
                           className="object-cover hover:scale-105 transition-transform duration-300"
-                          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                          sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, 400px"
                         />
                       </div>
                     </div>
@@ -325,6 +424,7 @@ export default function Home() {
             >
               <button
                 onClick={() => setSelectedImg(null)}
+                aria-label="Close preview"
                 className="absolute top-6 right-6 w-12 h-12 bg-white/20 hover:bg-white/40 text-white rounded-full flex items-center justify-center shadow-lg transition z-10"
               >
                 <span className="text-2xl font-bold select-none">×</span>
@@ -341,10 +441,9 @@ export default function Home() {
                   src={selectedImg}
                   alt="Preview"
                   fill
-                  quality={95}
+                  quality={90}
                   className="rounded-lg shadow-2xl object-contain"
-                  priority
-                  sizes="(max-width: 768px) 100vw, 1200px"
+                  sizes="(max-width: 768px) 95vw, 1200px"
                 />
               </motion.div>
             </motion.div>
@@ -354,19 +453,9 @@ export default function Home() {
 
       {/* Paket & Booking CTA */}
       <section className="section-full-width py-20 bg-gradient-to-r from-gray-700 via-gray-500 to-gray-400 text-white relative overflow-hidden">
-        {/* Decorative Shapes */}
-        <motion.div
-          className="absolute top-[-80px] left-[-80px] w-72 h-72 bg-white/20 rounded-full blur-3xl"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 2 }}
-        />
-        <motion.div
-          className="absolute bottom-[-60px] right-[-60px] w-64 h-64 bg-white/10 rounded-full blur-3xl"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 2, delay: 0.5 }}
-        />
+        {/* Decorative Shapes - reduced animation complexity */}
+        <div className="absolute top-[-80px] left-[-80px] w-72 h-72 bg-white/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-[-60px] right-[-60px] w-64 h-64 bg-white/10 rounded-full blur-3xl" />
 
         {/* Bagian CTA */}
         <div className="container mx-auto px-4 text-center relative z-10">
@@ -380,7 +469,7 @@ export default function Home() {
 
           <Link href="/products">
             <motion.div
-              whileHover={{ scale: 1.05, boxShadow: "0px 0px 15px rgba(255,255,255,0.5)" }}
+              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="inline-block px-10 py-4 bg-white text-yellow-500 font-bold rounded-full shadow-lg hover:bg-yellow-100 transition-all cursor-pointer"
             >
@@ -423,12 +512,11 @@ export default function Home() {
                       <Image
                         src={t.photo}
                         alt={t.name}
-                         width={64}
+                        width={64}
                         height={64}
                         loading="lazy"
-                        quality={75}
+                        quality={70}
                         className="rounded-full object-cover border-2 border-gray-300"
-                        sizes="64px"
                       />
                     </div>
                   ) : (
@@ -476,15 +564,9 @@ export default function Home() {
       {/* Why Choose Us */}
       <section className="section-full-width py-16 bg-[#f3f4f6]">
         <div className="container mx-auto text-center px-4">
-          <motion.h2
-            className="text-3xl md:text-4xl font-bold mb-12"
-            initial={{ opacity: 0, y: -20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
+          <h2 className="text-3xl md:text-4xl font-bold mb-12">
             Mengapa Memilih Nikhu Studio
-          </motion.h2>
+          </h2>
           {/* Grid fitur */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
@@ -515,25 +597,16 @@ export default function Home() {
             ].map((item, idx) => (
               <motion.div
                 key={idx}
-                initial={{ opacity: 0, y: 50 }}
+                initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.2, duration: 0.6 }}
-                whileHover={{
-                  scale: 1.05,
-                  rotate: 1,
-                  boxShadow: "0px 10px 20px rgba(0,0,0,0.2)",
-                }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ delay: idx * 0.1, duration: 0.4 }}
                 className={`p-6 rounded-2xl shadow-lg ${item.bgColor}`}
               >
                 {/* Icon */}
-                <motion.div
-                  className="flex justify-center mb-3"
-                  whileHover={{ scale: 1.2, rotate: 10 }}
-                  transition={{ duration: 0.3 }}
-                >
+                <div className="flex justify-center mb-3">
                   {item.icon}
-                </motion.div>
+                </div>
                 <h4 className="text-xl font-semibold mb-2 text-white">{item.title}</h4>
                 <p className="text-white">{item.desc}</p>
               </motion.div>

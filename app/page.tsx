@@ -217,7 +217,7 @@ export default function Home() {
         {/* Hero Image - Optimized for mobile LCP */}
         <div className="relative w-full flex justify-center md:justify-end">
           <div
-            className="relative w-full max-w-[600px] md:mr-10"
+            className="relative w-full max-w-[600px]"
             style={{ aspectRatio: '600/611' }}
           >
             <Image

@@ -11,8 +11,9 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Pagination } from 'swiper/modules'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Camera, UserCheck, Clock, User, ChevronLeft, ChevronRight, Video } from "lucide-react";
+import { Camera, UserCheck, Clock, User, ChevronLeft, ChevronRight, Video } from "lucide-react"
 import { toast } from 'sonner'
+import Marquee from 'react-fast-marquee'
 
 import 'swiper/css'
 import 'swiper/css/navigation'
@@ -50,6 +51,9 @@ export default function Home() {
   const [selectedImg, setSelectedImg] = useState<string | null>(null)
   const [portfolioImages, setPortfolioImages] = useState<Portfolio[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [marqueeSpeed, setMarqueeSpeed] = useState(40)
+  const [isMobile, setIsMobile] = useState(false)
+  const [isMarqueePaused, setIsMarqueePaused] = useState(false)
 
   // Newsletter state
   const [email, setEmail] = useState<string>("")
@@ -57,6 +61,11 @@ export default function Home() {
   const prevRef = useRef<HTMLButtonElement>(null)
   const nextRef = useRef<HTMLButtonElement>(null)
   const swiperRef = useRef<any>(null)
+  const testimonialSwiperRef = useRef<any>(null)
+  const marqueeContainerRef = useRef<HTMLDivElement>(null)
+  const touchStartX = useRef<number>(0)
+  const touchEndX = useRef<number>(0)
+  const scrollPosition = useRef<number>(0)
 
   // Add CSS animation
   useEffect(() => {
@@ -81,6 +90,38 @@ export default function Home() {
       document.head.removeChild(style);
     };
   }, []);
+
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // Touch handlers for mobile marquee swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    setIsMarqueePaused(true)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX
+  }
+
+  const handleTouchEnd = () => {
+    const swipeDistance = touchStartX.current - touchEndX.current
+    const minSwipeDistance = 50
+
+    if (Math.abs(swipeDistance) > minSwipeDistance) {
+      // Swipe detected - keep paused briefly then resume
+      setTimeout(() => setIsMarqueePaused(false), 300)
+    } else {
+      setIsMarqueePaused(false)
+    }
+  }
 
   // Ambil data portfolio dari Firestore
   useEffect(() => {
@@ -170,24 +211,24 @@ export default function Home() {
   }, [selectedImg])
 
   // Newsletter handler
-const handleSubscribe = async () => {
-  if (!email) {
-    toast.error("Masukkan email terlebih dahulu.");
-    return;
-  }
+  const handleSubscribe = async () => {
+    if (!email) {
+      toast.error("Masukkan email terlebih dahulu.");
+      return;
+    }
 
-  try {
-    await setDoc(doc(db, "newsletter", email), {
-      email,
-      createdAt: new Date(),
-    });
-    toast.success("Terima kasih sudah subscribe!");
-    setEmail("");
-  } catch (error) {
-    console.error("Error menyimpan email:", error);
-    toast.error("Gagal subscribe, coba lagi.");
+    try {
+      await setDoc(doc(db, "newsletter", email), {
+        email,
+        createdAt: new Date(),
+      });
+      toast.success("Terima kasih sudah subscribe!");
+      setEmail("");
+    } catch (error) {
+      console.error("Error menyimpan email:", error);
+      toast.error("Gagal subscribe, coba lagi.");
+    }
   }
-}
 
   return (
     <>
@@ -454,30 +495,36 @@ const handleSubscribe = async () => {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Testimonials - Marquee for All Devices with Mobile Swipe Support */}
       {testimonials.length > 0 && (
         <section
-          className="section-full-width py-16 text-center relative overflow-hidden"
-          style={{
-            background: "#f3f4f6",
-          }}
+          className="section-full-width py-16 text-center relative bg-[#f3f4f6]"
         >
-          <h2 className="text-3xl md:text-3xl font-bold mb-6 text-gray-800">
+          <h2 className="text-3xl md:text-3xl font-bold mb-8 text-gray-800">
             Apa Kata Klien Kami
           </h2>
-          <div className="testimonial-container overflow-hidden py-4" style={{ minHeight: '300px' }}>
-            <div 
-              className="testimonial-track"
-              style={{ 
-                '--testimonial-count': testimonials.length,
-                '--card-width': '340px',
-                '--card-gap': '24px'
-              } as React.CSSProperties}
+          
+          <div 
+            ref={marqueeContainerRef}
+            className="w-full overflow-x-hidden touch-pan-x"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <Marquee
+              speed={isMobile ? 30 : 40}
+              gradient={true}
+              gradientColor="#f3f4f6"
+              gradientWidth={isMobile ? 30 : 50}
+              pauseOnHover={true}
+              play={!isMarqueePaused}
+              className="py-4"
             >
-              {[...testimonials, ...testimonials].map((t, i) => (
+              {testimonials.map((t, i) => (
                 <div
                   key={`testimonial-${i}`}
-                  className="testimonial-card"
+                  className="mx-3 w-[300px] md:w-[340px] bg-white rounded-2xl shadow-lg p-6 flex-shrink-0 select-none"
+                  style={{ willChange: 'transform', touchAction: 'pan-x' }}
                 >
                   {t.photo ? (
                     <div className="relative w-16 h-16 mx-auto mb-4">
@@ -487,8 +534,9 @@ const handleSubscribe = async () => {
                         width={64}
                         height={64}
                         loading="lazy"
-                        quality={70}
-                        className="rounded-full object-cover border-2 border-gray-300"
+                        quality={60}
+                        className="rounded-full object-cover border-2 border-gray-300 pointer-events-none"
+                        draggable={false}
                       />
                     </div>
                   ) : (
@@ -496,7 +544,7 @@ const handleSubscribe = async () => {
                       <User className="text-gray-600 w-8 h-8" />
                     </div>
                   )}
-                  <p className="text-gray-700 italic mb-4 min-h-[60px]">
+                  <p className="text-gray-700 italic mb-4 min-h-[60px] text-sm md:text-base line-clamp-3">
                     &ldquo;{t.message}&rdquo;
                   </p>
                   <div className="flex justify-center mb-2 text-yellow-500">
@@ -523,7 +571,7 @@ const handleSubscribe = async () => {
                   <span className="text-sm text-gray-500">{t.role}</span>
                 </div>
               ))}
-            </div>
+            </Marquee>
           </div>
         </section>
       )}
@@ -599,32 +647,31 @@ const handleSubscribe = async () => {
         <h2 className="text-2xl md:text-2xl font-bold mb-4">Dapatkan Tips Fotografi & Promo</h2>
         <p className="mb-4 md:mb-6 text-gray-700 text-sm md:text-base">Subscribe newsletter kami</p>
         <form
-  className="flex justify-center gap-2 flex-wrap max-w-xs mx-auto"
-  onSubmit={e => {
-    e.preventDefault();
-    handleSubscribe();
-  }}
-  aria-label="Form Newsletter"
->
-  <label htmlFor="newsletter-email" className="sr-only">Email Anda</label>
-  <input
-    id="newsletter-email"
-    type="email"
-    placeholder="Email Anda"
-    className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
-    value={email}
-    onChange={(e) => setEmail(e.target.value)}
-    aria-label="Email untuk newsletter"
-  />
-  <button
-    type="submit"
-    className="px-4 py-2 bg-yellow-400 text-white font-semibold rounded-lg hover:bg-yellow-500 transition text-sm"
-    aria-label="Subscribe ke newsletter"
-  >
-    Subscribe
-  </button>
-</form>
-
+          className="flex justify-center gap-2 flex-wrap max-w-xs mx-auto"
+          onSubmit={e => {
+            e.preventDefault();
+            handleSubscribe();
+          }}
+          aria-label="Form Newsletter"
+        >
+          <label htmlFor="newsletter-email" className="sr-only">Email Anda</label>
+          <input
+            id="newsletter-email"
+            type="email"
+            placeholder="Email Anda"
+            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-white shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            aria-label="Email untuk newsletter"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 bg-yellow-400 text-white font-semibold rounded-lg hover:bg-yellow-500 transition text-sm"
+            aria-label="Subscribe ke newsletter"
+          >
+            Subscribe
+          </button>
+        </form>
       </section>
     </>
   )

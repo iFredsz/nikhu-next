@@ -249,8 +249,6 @@ const nextConfig = {
       'react-fast-marquee',
     ],
     
-    // Modern builds for modern browsers
-    modern: true,
   },
 
   // Disable source maps in production for faster builds

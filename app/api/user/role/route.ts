@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import { adminDb } from '@/lib/firebase-admin'

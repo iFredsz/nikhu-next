@@ -520,7 +520,7 @@ const handleSubscribe = async () => {
     </h2>
 
     {/* Desktop - Marquee */}
-    <div className="hidden md:block w-full overflow-x-hidden">
+    <div className="hidden md:block w-full overflow-hidden">
       <Marquee
         speed={marqueeSpeed}
         gradient

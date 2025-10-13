@@ -367,10 +367,10 @@ export default function Home() {
       </section>
 
       {/* Portfolio Section */}
-      <section className="section-full-width md:py-0 py-12 mb-16 relative">
+      <section className="section-full-width md:py-0 py-12 relative">
         <div className="container mx-auto px-4">
           {portfolioImages.length > 0 && (
-            <h2 className="text-3xl font-bold mb-6 text-center">Hasil Karya Kami</h2>
+            <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center">Hasil Karya Kami</h2>
           )}
           {isLoading ? (
             <div className="flex justify-center items-center h-64">
@@ -420,12 +420,12 @@ export default function Home() {
                   768: {
                     slidesPerView: 2,
                     spaceBetween: 25,
-                    centeredSlides: false,
+                    centeredSlides: true,
                   },
                   1024: { 
                     slidesPerView: Math.min(portfolioImages.length, 3),
                     spaceBetween: 30,
-                    centeredSlides: false,
+                    centeredSlides: true,
                   },
                 }}
                 className="px-2"
@@ -452,7 +452,7 @@ export default function Home() {
                   </SwiperSlide>
                 ))}
               </Swiper>
-              <div className="custom-pagination-portfolio"></div>
+              <div className="custom-pagination-portfolio flex justify-center items-center mt-8"></div>
             </div>
           ) : (
             !isLoading && (
@@ -521,77 +521,84 @@ export default function Home() {
       </section>
 
       {/* Testimonials - Marquee for Desktop, Swiper for Mobile */}
-      {testimonials.length > 0 && (
-        <section
-          className="section-full-width py-16 text-center relative bg-[#f3f4f6]"
-        >
-          <h2 className="text-3xl md:text-3xl font-bold mb-8 text-gray-800">
-            Apa Kata Klien Kami
-          </h2>
-          
-          {/* Desktop - Marquee */}
-          <div className="hidden md:block w-full overflow-x-hidden">
-            <Marquee
-              speed={marqueeSpeed}
-              gradient={true}
-              gradientColor="#f3f4f6"
-              gradientWidth={50}
-              pauseOnHover={true}
-              className="py-4"
-              play={true}
-            >
-              {testimonials.map((t, i) => (
-                <div
-                  key={`testimonial-desktop-${i}`}
-                  className="mx-3 w-[340px] bg-white rounded-2xl shadow-lg p-6 flex-shrink-0"
-                  style={{ willChange: 'transform' }}
+{testimonials.length > 0 && (
+  <section
+    className="section-full-width py-16 text-center relative bg-[#f3f4f6] overflow-hidden" // Tambahkan overflow-hidden di sini
+  >
+    <h2 className="text-2xl md:text-3xl font-bold mb-8 text-gray-800">
+      Apa Kata Klien Kami
+    </h2>
+    
+    {/* Desktop - Marquee */}
+    <div className="hidden md:block w-full overflow-x-hidden py-4"> {/* Tambahkan py-4 di sini dan hapus dari Marquee */}
+      <Marquee
+        speed={marqueeSpeed}
+        gradient={true}
+        gradientColor="#f3f4f6"
+        gradientWidth={50}
+        pauseOnHover={true}
+        play={true}
+        style={{ 
+          overflow: 'hidden', // Pastikan tidak ada overflow
+          margin: 0,
+          padding: 0
+        }}
+      >
+        {testimonials.map((t, i) => (
+          <div
+            key={`testimonial-desktop-${i}`}
+            className="mx-3 w-[340px] bg-white rounded-2xl shadow-lg p-6 flex-shrink-0"
+            style={{ 
+              willChange: 'transform',
+              marginBottom: '0', // Pastikan tidak ada margin bottom
+            }}
+          >
+            {t.photo ? (
+              <div className="relative w-16 h-16 mx-auto mb-4">
+                <Image
+                  src={t.photo}
+                  alt={`Foto ${t.name}`}
+                  width={64}
+                  height={64}
+                  loading="lazy"
+                  quality={60}
+                  className="rounded-full object-cover border-2 border-gray-300"
+                />
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
+                <User className="text-gray-600 w-8 h-8" />
+              </div>
+            )}
+            <p className="text-gray-700 italic mb-4 min-h-[60px] text-base line-clamp-3">
+              &ldquo;{t.message}&rdquo;
+            </p>
+            <div className="flex justify-center mb-2 text-yellow-500">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <svg
+                  key={idx}
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill={idx < t.rating ? "currentColor" : "none"}
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  className="w-5 h-5"
+                  aria-hidden="true"
                 >
-                  {t.photo ? (
-                    <div className="relative w-16 h-16 mx-auto mb-4">
-                      <Image
-                        src={t.photo}
-                        alt={`Foto ${t.name}`}
-                        width={64}
-                        height={64}
-                        loading="lazy"
-                        quality={60}
-                        className="rounded-full object-cover border-2 border-gray-300"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
-                      <User className="text-gray-600 w-8 h-8" />
-                    </div>
-                  )}
-                  <p className="text-gray-700 italic mb-4 min-h-[60px] text-base line-clamp-3">
-                    &ldquo;{t.message}&rdquo;
-                  </p>
-                  <div className="flex justify-center mb-2 text-yellow-500">
-                    {Array.from({ length: 5 }).map((_, idx) => (
-                      <svg
-                        key={idx}
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill={idx < t.rating ? "currentColor" : "none"}
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        className="w-5 h-5"
-                        aria-hidden="true"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.003 6.145h6.462c.969 0 1.371 1.24.588 1.81l-5.234 3.805 2.003 6.145c.3.921-.755 1.688-1.539 1.118l-5.233-3.804-5.233 3.804c-.783.57-1.838-.197-1.539-1.118l2.003-6.145-5.234-3.805c-.783-.57-.38-1.81.588-1.81h6.462l2.003-6.145z"
-                        />
-                      </svg>
-                    ))}
-                  </div>
-                  <h4 className="font-semibold text-gray-800">{t.name}</h4>
-                  <span className="text-sm text-gray-500">{t.role}</span>
-                </div>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.003 6.145h6.462c.969 0 1.371 1.24.588 1.81l-5.234 3.805 2.003 6.145c.3.921-.755 1.688-1.539 1.118l-5.233-3.804-5.233 3.804c-.783.57-1.838-.197-1.539-1.118l2.003-6.145-5.234-3.805c-.783-.57-.38-1.81.588-1.81h6.462l2.003-6.145z"
+                  />
+                </svg>
               ))}
-            </Marquee>
+            </div>
+            <h4 className="font-semibold text-gray-800">{t.name}</h4>
+            <span className="text-sm text-gray-500">{t.role}</span>
           </div>
+        ))}
+      </Marquee>
+    </div>
 
           {/* Mobile - Swiper */}
           <div className="block md:hidden pb-12">
@@ -668,15 +675,15 @@ export default function Home() {
                 </SwiperSlide>
               ))}
             </Swiper>
-            <div className="custom-pagination-testimonial"></div>
+           <div className="custom-pagination-testimonial flex justify-center items-center mt-8"></div>
           </div>
         </section>
       )}
 
       {/* Why Choose Us */}
-      <section className="section-full-width py-16 bg-[#f3f4f6]">
+      <section className="section-full-width bg-[#f3f4f6]">
         <div className="container mx-auto text-center px-4">
-          <h2 className="text-3xl md:text-3xl font-bold mb-6">
+          <h2 className="text-2xl md:text-3xl font-bold mb-6">
             Mengapa Memilih Nikhu Studio
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -725,7 +732,7 @@ export default function Home() {
       {/* FAQ */}
       <section className="section-full-width py-16 bg-[#f3f4f6]">
         <div className="container mx-auto px-4 max-w-3xl">
-          <h2 className="text-3xl font-bold mb-6 text-center">Pertanyaan Umum</h2>
+          <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center">Pertanyaan Umum</h2>
           <div className="space-y-4">
             <div className="p-4 bg-white rounded-xl shadow">
               <h4 className="font-semibold">Apakah bisa foto di luar studio?</h4>

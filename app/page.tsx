@@ -51,21 +51,11 @@ export default function Home() {
   const [selectedImg, setSelectedImg] = useState<string | null>(null)
   const [portfolioImages, setPortfolioImages] = useState<Portfolio[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [marqueeSpeed, setMarqueeSpeed] = useState(40)
-  const [isMobile, setIsMobile] = useState(false)
-  const [isMarqueePaused, setIsMarqueePaused] = useState(false)
-
-  // Newsletter state
   const [email, setEmail] = useState<string>("")
 
   const prevRef = useRef<HTMLButtonElement>(null)
   const nextRef = useRef<HTMLButtonElement>(null)
   const swiperRef = useRef<any>(null)
-  const testimonialSwiperRef = useRef<any>(null)
-  const marqueeContainerRef = useRef<HTMLDivElement>(null)
-  const touchStartX = useRef<number>(0)
-  const touchEndX = useRef<number>(0)
-  const scrollPosition = useRef<number>(0)
 
   // Add CSS animation
   useEffect(() => {
@@ -84,44 +74,27 @@ export default function Home() {
       .animate-fadeInUp {
         animation: fadeInUp 0.4s ease-out forwards;
       }
+      
+      /* Fix testimonial overflow */
+      .testimonial-wrapper {
+        overflow: hidden;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      .testimonial-swiper .swiper-wrapper {
+        align-items: center;
+      }
+      
+      /* Prevent scroll issues */
+      .no-scroll-y {
+        overflow-y: hidden !important;
+      }
     `;
     document.head.appendChild(style);
     return () => {
       document.head.removeChild(style);
     };
   }, []);
-
-  // Detect mobile
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
-
-  // Touch handlers for mobile marquee swipe
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX
-    setIsMarqueePaused(true)
-  }
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    touchEndX.current = e.touches[0].clientX
-  }
-
-  const handleTouchEnd = () => {
-    const swipeDistance = touchStartX.current - touchEndX.current
-    const minSwipeDistance = 50
-
-    if (Math.abs(swipeDistance) > minSwipeDistance) {
-      // Swipe detected - keep paused briefly then resume
-      setTimeout(() => setIsMarqueePaused(false), 300)
-    } else {
-      setIsMarqueePaused(false)
-    }
-  }
 
   // Ambil data portfolio dari Firestore
   useEffect(() => {
@@ -175,7 +148,7 @@ export default function Home() {
     return () => clearTimeout(timeoutId);
   }, [])
 
-  // Handle Swiper navigation initialization - dengan debounce untuk prevent forced reflow
+  // Handle Swiper navigation initialization
   const updateSwiperNavigation = useCallback((swiper: any) => {
     requestAnimationFrame(() => {
       if (swiper && swiper.params && swiper.params.navigation && swiper.navigation) {
@@ -211,42 +184,96 @@ export default function Home() {
   }, [selectedImg])
 
   // Newsletter handler
-// Newsletter handler
-const handleSubscribe = async () => {
-  if (!email) {
-    toast.error("Masukkan email terlebih dahulu.");
-    return;
-  }
-
-  // Validasi format email sederhana
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    toast.error("Format email tidak valid.");
-    return;
-  }
-
-  try {
-    // Cek apakah email sudah ada di database
-    const emailDoc = await getDoc(doc(db, "newsletter", email));
-    
-    if (emailDoc.exists()) {
-      toast.error("Email ini sudah terdaftar.");
+  const handleSubscribe = async () => {
+    if (!email) {
+      toast.error("Masukkan email terlebih dahulu.");
       return;
     }
 
-    // Simpan email jika belum ada
-    await setDoc(doc(db, "newsletter", email), {
-      email,
-      createdAt: new Date(),
-    });
-    
-    toast.success("Terima kasih sudah subscribe!");
-    setEmail("");
-  } catch (error) {
-    console.error("Error menyimpan email:", error);
-    toast.error("Gagal subscribe, coba lagi.");
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Format email tidak valid.");
+      return;
+    }
+
+    try {
+      const emailDoc = await getDoc(doc(db, "newsletter", email));
+      
+      if (emailDoc.exists()) {
+        toast.error("Email ini sudah terdaftar.");
+        return;
+      }
+
+      await setDoc(doc(db, "newsletter", email), {
+        email,
+        createdAt: new Date(),
+      });
+      
+      toast.success("Terima kasih sudah subscribe!");
+      setEmail("");
+    } catch (error) {
+      console.error("Error menyimpan email:", error);
+      toast.error("Gagal subscribe, coba lagi.");
+    }
   }
-}
+
+  // Testimonial Card Component
+  const TestimonialCard = ({ t, index }: { t: Testimonial; index: number }) => (
+    <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col justify-between h-[260px] w-full">
+      {/* Foto */}
+      <div className="flex-shrink-0">
+        {t.photo ? (
+          <div className="relative w-14 h-14 mx-auto mb-3">
+            <Image
+              src={t.photo}
+              alt={`Foto ${t.name}`}
+              width={56}
+              height={56}
+              loading={index < 3 ? "eager" : "lazy"}
+              quality={60}
+              className="rounded-full object-cover border-2 border-gray-300"
+            />
+          </div>
+        ) : (
+          <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-3">
+            <User className="text-gray-600 w-7 h-7" />
+          </div>
+        )}
+      </div>
+      
+      {/* Teks */}
+      <div className="flex-1 flex items-center overflow-hidden">
+        <p className="text-gray-700 italic text-sm line-clamp-3 px-2 text-center w-full">
+          &ldquo;{t.message}&rdquo;
+        </p>
+      </div>
+      
+      {/* Rating, Nama, Role */}
+      <div className="flex-shrink-0 mt-2">
+        <div className="flex justify-center mb-2 text-yellow-500">
+          {Array.from({ length: 5 }).map((_, idx) => (
+            <svg
+              key={idx}
+              xmlns="http://www.w3.org/2000/svg"
+              fill={idx < t.rating ? "currentColor" : "none"}
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              className="w-4 h-4"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.003 6.145h6.462c.969 0 1.371 1.24.588 1.81l-5.234 3.805 2.003 6.145c.3.921-.755 1.688-1.539 1.118l-5.233-3.804-5.233 3.804c-.783.57-1.838-.197-1.539-1.118l2.003-6.145-5.234-3.805c-.783-.57-.38-1.81.588-1.81h6.462l2.003-6.145z"
+              />
+            </svg>
+          ))}
+        </div>
+        <h4 className="font-semibold text-gray-800 text-center text-sm">{t.name}</h4>
+        <span className="text-xs text-gray-500 block text-center">{t.role}</span>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -273,7 +300,7 @@ const handleSubscribe = async () => {
             <Link href="/products">Booking Now</Link>
           </Button>
         </div>
-        {/* Hero Image - Optimized for mobile LCP */}
+        {/* Hero Image */}
         <div className="relative w-full flex justify-center md:justify-end">
           <div
             className="relative w-full max-w-[600px]"
@@ -337,7 +364,7 @@ const handleSubscribe = async () => {
                 ease: "easeOut"
               }}
             />
-            {/* Lens Flare Effect - Only on larger screens for performance */}
+            {/* Lens Flare Effect - Only on larger screens */}
             <motion.div
               key={`flare-${flashTrigger}`}
               className="hidden md:block absolute top-1/3 right-1/3 w-20 h-20 rounded-full pointer-events-none"
@@ -496,7 +523,7 @@ const handleSubscribe = async () => {
       </section>
 
       {/* Paket & Booking CTA */}
-      <section className="section-full-width py-20 bg-gradient-to-r from-gray-700 via-gray-500 to-gray-400 text-white relative overflow-hidden">
+      <section className="section-full-width py-16 bg-gradient-to-r from-gray-700 via-gray-500 to-gray-400 text-white relative overflow-hidden">
         <div className="absolute top-[-80px] left-[-80px] w-72 h-72 bg-white/20 rounded-full blur-3xl" />
         <div className="absolute bottom-[-60px] right-[-60px] w-64 h-64 bg-white/10 rounded-full blur-3xl" />
         <div className="container mx-auto px-4 text-center relative z-10">
@@ -513,71 +540,73 @@ const handleSubscribe = async () => {
         </div>
       </section>
       
-{/* Testimonials - Marquee for Desktop, Swiper for Mobile */}
-{testimonials.length > 0 && (
-  <section className="section-full-width py-16 text-center relative bg-[#f3f4f6] overflow-hidden">
-    <h2 className="text-2xl md:text-3xl font-bold mb-8 text-gray-800">
-      Apa Kata Klien Kami
-    </h2>
+      {/* Testimonials - Fixed Overflow */}
+      {testimonials.length > 0 && (
+        <section className="section-full-width py-16 text-center relative bg-[#f3f4f6] no-scroll-y">
+          <h2 className="text-2xl md:text-3xl font-bold mb-8 text-gray-800">
+            Apa Kata Klien Kami
+          </h2>
 
-    {/* Desktop - Marquee */}
-    <div className="hidden md:block w-full overflow-hidden">
-      <Marquee
-        speed={marqueeSpeed}
-        gradient
-        gradientColor="#f3f4f6"
-        gradientWidth={50}
-        pauseOnHover
-        className="py-4 will-change-transform"
-        play
-      >
-        {testimonials.map((t, i) => (
-          <div
-            key={`testimonial-desktop-${i}`}
-            className="mx-3 w-[340px] bg-white rounded-2xl shadow-lg p-6 flex-shrink-0"
-          >
-            {/* konten testimonial */}
+          {/* Desktop - Marquee */}
+          <div className="hidden md:block w-full testimonial-wrapper">
+            <Marquee
+              speed={40}
+              gradient
+              gradientColor="#f3f4f6"
+              gradientWidth={50}
+              pauseOnHover
+              play
+            >
+              {testimonials.map((t, i) => (
+                <div
+                  key={`testimonial-desktop-${i}`}
+                  className="mx-3 w-[340px] flex-shrink-0"
+                  style={{ willChange: 'transform' }}
+                >
+                  <TestimonialCard t={t} index={i} />
+                </div>
+              ))}
+            </Marquee>
           </div>
-        ))}
-      </Marquee>
-    </div>
 
-    {/* Mobile - Swiper */}
-    <div className="block md:hidden px-2" style={{ overflow: 'hidden' }}>
-      <Swiper
-        modules={[Pagination]}
-        spaceBetween={16}
-        slidesPerView={1}
-        centeredSlides={true}
-        loop={testimonials.length > 1}
-        pagination={{
-          clickable: true,
-          dynamicBullets: true,
-        }}
-        autoplay={false}
-        className="testimonial-swiper !pb-10"
-        breakpoints={{
-          480: {
-            slidesPerView: 1,
-            spaceBetween: 16,
-            centeredSlides: true,
-          },
-          640: {
-            slidesPerView: 1.2,
-            spaceBetween: 20,
-            centeredSlides: true,
-          },
-        }}
-      >
-        {testimonials.map((t, i) => (
-          <SwiperSlide key={`testimonial-mobile-${i}`}>
-            {/* konten testimonial */}
-          </SwiperSlide>
-        ))}
-      </Swiper>
-    </div>
-  </section>
-)}
+          {/* Mobile - Swiper */}
+          <div className="block md:hidden px-4 testimonial-wrapper">
+            <Swiper
+              modules={[Pagination]}
+              spaceBetween={16}
+              slidesPerView={1}
+              centeredSlides={true}
+              loop={testimonials.length > 1}
+              pagination={{
+                clickable: true,
+                dynamicBullets: true,
+              }}
+              className="testimonial-swiper !pb-10"
+              style={{ height: 'auto' }}
+              breakpoints={{
+                480: {
+                  slidesPerView: 1,
+                  spaceBetween: 16,
+                  centeredSlides: true,
+                },
+                640: {
+                  slidesPerView: 1.2,
+                  spaceBetween: 20,
+                  centeredSlides: true,
+                },
+              }}
+            >
+              {testimonials.map((t, i) => (
+                <SwiperSlide key={`testimonial-mobile-${i}`}>
+                  <div className="mx-auto max-w-[340px] px-2">
+                    <TestimonialCard t={t} index={i} />
+                  </div>
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          </div>
+        </section>
+      )}
 
       {/* Why Choose Us */}
       <section className="section-full-width bg-[#f3f4f6]">

@@ -25,7 +25,7 @@ export default function MobileMenu() {
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       {/* Trigger Icon */}
       <SheetTrigger asChild>
-        <MenuIcon className='ml-2 h-5 w-5 md:hidden cursor-pointer' />
+        <MenuIcon className=' h-5 w-5 md:hidden cursor-pointer' />
       </SheetTrigger>
 
       {/* Drawer Menu */}

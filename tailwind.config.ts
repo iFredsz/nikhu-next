@@ -9,16 +9,6 @@ module.exports = {
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
 	],
-  safelist: [
-    'swiper',
-    'swiper-slide',
-    'swiper-wrapper',
-    'swiper-pagination',
-    'swiper-pagination-bullet',
-    'swiper-pagination-bullet-active',
-    'swiper-button-prev',
-    'swiper-button-next',
-  ],
   theme: {
     container: {
       center: true,

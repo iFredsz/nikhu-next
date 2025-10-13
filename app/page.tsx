@@ -53,6 +53,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true)
   const [marqueeSpeed, setMarqueeSpeed] = useState(40)
   const [isMobile, setIsMobile] = useState(false)
+  const [isMarqueePaused, setIsMarqueePaused] = useState(false)
 
   // Newsletter state
   const [email, setEmail] = useState<string>("")
@@ -61,8 +62,12 @@ export default function Home() {
   const nextRef = useRef<HTMLButtonElement>(null)
   const swiperRef = useRef<any>(null)
   const testimonialSwiperRef = useRef<any>(null)
+  const marqueeContainerRef = useRef<HTMLDivElement>(null)
+  const touchStartX = useRef<number>(0)
+  const touchEndX = useRef<number>(0)
+  const scrollPosition = useRef<number>(0)
 
-  // Add CSS animation with critical styles
+  // Add CSS animation
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
@@ -78,65 +83,6 @@ export default function Home() {
       }
       .animate-fadeInUp {
         animation: fadeInUp 0.4s ease-out forwards;
-        will-change: opacity, transform;
-      }
-      
-      /* Custom Pagination Styles */
-      .custom-pagination-portfolio,
-      .custom-pagination-testimonial {
-        position: static !important;
-        margin-top: 24px !important;
-        width: 100% !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-        gap: 8px !important;
-        contain: layout style paint;
-        height: 24px !important;
-      }
-      
-      .swiper-pagination-bullet {
-        width: 10px !important;
-        height: 10px !important;
-        background: #d1d5db !important;
-        opacity: 1 !important;
-        transition: all 0.3s ease !important;
-        will-change: width, background;
-      }
-      
-      .swiper-pagination-bullet-active {
-        background: #3b82f6 !important;
-        width: 24px !important;
-        border-radius: 5px !important;
-      }
-      
-      /* Performance optimizations */
-      .swiper-slide {
-        will-change: transform;
-        backface-visibility: hidden;
-        transform: translateZ(0);
-      }
-      
-      .rfm-marquee-container {
-        will-change: transform;
-        contain: layout style paint;
-        backface-visibility: hidden;
-      }
-      
-      /* Prevent layout shift */
-      img[loading="lazy"] {
-        content-visibility: auto;
-      }
-      
-      /* Reduce repaints */
-      * {
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
-      
-      /* GPU Acceleration */
-      .swiper-wrapper {
-        transform: translateZ(0);
       }
     `;
     document.head.appendChild(style);
@@ -145,28 +91,48 @@ export default function Home() {
     };
   }, []);
 
-  // Detect mobile with passive listener
+  // Detect mobile
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768)
     }
     checkMobile()
-    window.addEventListener('resize', checkMobile, { passive: true })
+    window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Ambil data portfolio dari Firestore dengan batasan
+  // Touch handlers for mobile marquee swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    setIsMarqueePaused(true)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX
+  }
+
+  const handleTouchEnd = () => {
+    const swipeDistance = touchStartX.current - touchEndX.current
+    const minSwipeDistance = 50
+
+    if (Math.abs(swipeDistance) > minSwipeDistance) {
+      // Swipe detected - keep paused briefly then resume
+      setTimeout(() => setIsMarqueePaused(false), 300)
+    } else {
+      setIsMarqueePaused(false)
+    }
+  }
+
+  // Ambil data portfolio dari Firestore
   useEffect(() => {
     setIsLoading(true)
     const unsub = onSnapshot(
       collection(db, "portfolio"), 
       (snapshot) => {
-        const data: Portfolio[] = snapshot.docs
-          .map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }))
-          .slice(0, 12) as Portfolio[] // Batasi hanya 12 item untuk performa
+        const data: Portfolio[] = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Portfolio[]
         setPortfolioImages(data)
         setIsLoading(false)
       },
@@ -302,9 +268,9 @@ export default function Home() {
               height={420}
               priority
               fetchPriority="high"
-              quality={85}
+              quality={65}
               className="object-contain rounded-lg"
-              sizes="(max-width: 640px) 100vw, (max-width: 768px) 80vw, 460px"
+              sizes="(max-width: 640px) 100vw, (max-width: 768px) 80vw, 412px"
               loading="eager"
               decoding="async"
             />
@@ -382,7 +348,7 @@ export default function Home() {
       </section>
 
       {/* Portfolio Section */}
-      <section className="section-full-width md:py-0 mb-4 py-12 relative">
+      <section className="section-full-width md:py-0 py-12 relative">
         <div className="container mx-auto px-4">
           {portfolioImages.length > 0 && (
             <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center">Hasil Karya Kami</h2>
@@ -396,7 +362,7 @@ export default function Home() {
               <button
                 ref={prevRef}
                 aria-label="Sebelumnya"
-                className="absolute left-2 top-[calc(50%-48px)] transform -translate-y-1/2 bg-white/80 hover:bg-white p-3 rounded-full z-10 shadow-lg transition-all opacity-70 hover:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed min-w-[48px] min-h-[48px]"
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white p-3 rounded-full z-10 shadow-lg transition-all opacity-70 hover:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed min-w-[48px] min-h-[48px]"
                 disabled={portfolioImages.length <= 1}
               >
                 <ChevronLeft className="w-6 h-6 text-yellow-600" />
@@ -404,7 +370,7 @@ export default function Home() {
               <button
                 ref={nextRef}
                 aria-label="Selanjutnya"
-                className="absolute right-2 top-[calc(50%-48px)] transform -translate-y-1/2 bg-white/80 hover:bg-white p-3 rounded-full z-10 shadow-lg transition-all opacity-70 hover:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed min-w-[48px] min-h-[48px]"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white p-3 rounded-full z-10 shadow-lg transition-all opacity-70 hover:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed min-w-[48px] min-h-[48px]"
                 disabled={portfolioImages.length <= 1}
               >
                 <ChevronRight className="w-6 h-6 text-yellow-600" />
@@ -413,19 +379,10 @@ export default function Home() {
                 modules={[Navigation, Pagination]}
                 spaceBetween={20}
                 slidesPerView={1}
-                centeredSlides={true}
                 loop={portfolioImages.length > 1}
-                speed={400}
-                threshold={5}
-                resistance={true}
-                resistanceRatio={0.85}
-                touchRatio={1}
-                touchAngle={45}
-                grabCursor={true}
                 pagination={{
                   clickable: true,
                   dynamicBullets: true,
-                  el: '.custom-pagination-portfolio',
                 }}
                 navigation={{
                   prevEl: prevRef.current,
@@ -435,28 +392,25 @@ export default function Home() {
                 onInit={updateSwiperNavigation}
                 breakpoints={{
                   640: { 
-                    slidesPerView: 1.15,
-                    spaceBetween: 20,
-                    centeredSlides: true,
+                    slidesPerView: Math.min(portfolioImages.length, 2),
+                    spaceBetween: 20
                   },
                   768: {
-                    slidesPerView: 2,
-                    spaceBetween: 25,
-                    centeredSlides: true,
+                    slidesPerView: Math.min(portfolioImages.length, 2),
+                    spaceBetween: 25
                   },
                   1024: { 
                     slidesPerView: Math.min(portfolioImages.length, 3),
-                    spaceBetween: 30,
-                    centeredSlides: true,
+                    spaceBetween: 30
                   },
                 }}
-                className="px-2"
+                className="px-2 !pb-10"
                 watchSlidesProgress={true}
               >
                 {portfolioImages.map((img, index) => (
                   <SwiperSlide key={img.id}>
                     <div 
-                      className="cursor-pointer transform transition-transform"
+                      className="cursor-pointer"
                       onClick={() => setSelectedImg(img.url)}
                     >
                       <div className="relative w-full aspect-[4/5] overflow-hidden rounded-xl md:rounded-2xl shadow-lg">
@@ -464,17 +418,16 @@ export default function Home() {
                           src={img.url}
                           alt={img.title ? `Portfolio: ${img.title}` : "Portfolio"}
                           fill
-                          loading={index < 3 ? "eager" : "lazy"}
-                          quality={70}
+                          loading={index === 0 ? "eager" : "lazy"}
+                          quality={65}
                           className="object-cover hover:scale-105 transition-transform duration-300"
-                          sizes="(max-width: 640px) 90vw, (max-width: 768px) 48vw, (max-width: 1024px) 32vw, 380px"
+                          sizes="(max-width: 640px) 100vw, (max-width: 768px) 48vw, (max-width: 1024px) 32vw, 380px"
                         />
                       </div>
                     </div>
                   </SwiperSlide>
                 ))}
               </Swiper>
-              <div className="custom-pagination-portfolio mt-6"></div>
             </div>
           ) : (
             !isLoading && (
@@ -541,163 +494,158 @@ export default function Home() {
           </Link>
         </div>
       </section>
+{/* Testimonials - Marquee for Desktop, Swiper for Mobile */}
+{testimonials.length > 0 && (
+  <section className="section-full-width py-16 text-center relative bg-[#f3f4f6]">
+    <h2 className="text-2xl md:text-3xl font-bold mb-8 text-gray-800">
+      Apa Kata Klien Kami
+    </h2>
 
-      {/* Testimonials - Marquee for Desktop, Swiper for Mobile */}
-      {testimonials.length > 0 && (
-        <section
-          className="section-full-width py-16 text-center relative bg-[#f3f4f6] overflow-hidden"
-        >
-          <h2 className="text-2xl md:text-3xl font-bold mb-8 text-gray-800">
-            Apa Kata Klien Kami
-          </h2>
-          
-          {/* Desktop - Marquee */}
-          <div className="hidden md:block w-full overflow-hidden py-4">
-            <Marquee
-              speed={marqueeSpeed}
-              gradient={true}
-              gradientColor="#f3f4f6"
-              gradientWidth={50}
-              pauseOnHover={true}
-              play={true}
-              direction="left"
-            >
-              {testimonials.map((t, i) => (
-                <div
-                  key={`testimonial-desktop-${i}`}
-                  className="mx-3 w-[340px] bg-white rounded-2xl shadow-lg p-6 flex-shrink-0 transform"
+    {/* Desktop - Marquee */}
+    <div className="hidden md:block w-full overflow-x-hidden">
+      <Marquee
+        speed={marqueeSpeed}
+        gradient
+        gradientColor="#f3f4f6"
+        gradientWidth={50}
+        pauseOnHover
+        className="py-4"
+        play
+      >
+        {testimonials.map((t, i) => (
+          <div
+            key={`testimonial-desktop-${i}`}
+            className="mx-3 w-[340px] bg-white rounded-2xl shadow-lg p-6 flex-shrink-0"
+            style={{ willChange: 'transform' }}
+          >
+            {t.photo ? (
+              <div className="relative w-16 h-16 mx-auto mb-4">
+                <Image
+                  src={t.photo}
+                  alt={`Foto ${t.name}`}
+                  width={64}
+                  height={64}
+                  loading="lazy"
+                  quality={60}
+                  className="rounded-full object-cover border-2 border-gray-300"
+                />
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
+                <User className="text-gray-600 w-8 h-8" />
+              </div>
+            )}
+            <p className="text-gray-700 italic mb-4 min-h-[60px] text-base line-clamp-3">
+              &ldquo;{t.message}&rdquo;
+            </p>
+            <div className="flex justify-center mb-2 text-yellow-500">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <svg
+                  key={idx}
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill={idx < t.rating ? "currentColor" : "none"}
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  className="w-5 h-5"
                 >
-                  {t.photo ? (
-                    <div className="relative w-16 h-16 mx-auto mb-4">
-                      <Image
-                        src={t.photo}
-                        alt={`Foto ${t.name}`}
-                        width={64}
-                        height={64}
-                        loading="lazy"
-                        quality={60}
-                        className="rounded-full object-cover border-2 border-gray-300"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
-                      <User className="text-gray-600 w-8 h-8" />
-                    </div>
-                  )}
-                  <p className="text-gray-700 italic mb-4 min-h-[60px] text-base line-clamp-3">
-                    &ldquo;{t.message}&rdquo;
-                  </p>
-                  <div className="flex justify-center mb-2 text-yellow-500">
-                    {Array.from({ length: 5 }).map((_, idx) => (
-                      <svg
-                        key={idx}
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill={idx < t.rating ? "currentColor" : "none"}
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        className="w-5 h-5"
-                        aria-hidden="true"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.003 6.145h6.462c.969 0 1.371 1.24.588 1.81l-5.234 3.805 2.003 6.145c.3.921-.755 1.688-1.539 1.118l-5.233-3.804-5.233 3.804c-.783.57-1.838-.197-1.539-1.118l2.003-6.145-5.234-3.805c-.783-.57-.38-1.81.588-1.81h6.462l2.003-6.145z"
-                        />
-                      </svg>
-                    ))}
-                  </div>
-                  <h4 className="font-semibold text-gray-800">{t.name}</h4>
-                  <span className="text-sm text-gray-500">{t.role}</span>
-                </div>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.003 6.145h6.462c.969 0 1.371 1.24.588 1.81l-5.234 3.805 2.003 6.145c.3.921-.755 1.688-1.539 1.118l-5.233-3.804-5.233 3.804c-.783.57-1.838-.197-1.539-1.118l2.003-6.145-5.234-3.805c-.783-.57-.38-1.81.588-1.81h6.462l2.003-6.145z"
+                  />
+                </svg>
               ))}
-            </Marquee>
+            </div>
+            <h4 className="font-semibold text-gray-800">{t.name}</h4>
+            <span className="text-sm text-gray-500">{t.role}</span>
           </div>
+        ))}
+      </Marquee>
+    </div>
 
-          {/* Mobile - Swiper */}
-          <div className="block md:hidden">
-            <Swiper
-              modules={[Pagination]}
-              spaceBetween={16}
-              slidesPerView={1}
-              centeredSlides={true}
-              loop={testimonials.length > 1}
-              speed={400}
-              threshold={5}
-              pagination={{
-                clickable: true,
-                dynamicBullets: true,
-                el: '.custom-pagination-testimonial',
-              }}
-              breakpoints={{
-                480: {
-                  slidesPerView: 1.1,
-                  spaceBetween: 20,
-                  centeredSlides: true,
-                },
-                640: {
-                  slidesPerView: 1.2,
-                  spaceBetween: 20,
-                  centeredSlides: true,
-                },
-              }}
-            >
-              {testimonials.map((t, i) => (
-                <SwiperSlide key={`testimonial-mobile-${i}`}>
-                  <div className="bg-white rounded-2xl shadow-lg p-6 h-full mx-2">
-                    {t.photo ? (
-                      <div className="relative w-16 h-16 mx-auto mb-4">
-                        <Image
-                          src={t.photo}
-                          alt={`Foto ${t.name}`}
-                          width={64}
-                          height={64}
-                          loading="lazy"
-                          quality={60}
-                          className="rounded-full object-cover border-2 border-gray-300"
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
-                        <User className="text-gray-600 w-8 h-8" />
-                      </div>
-                    )}
-                    <p className="text-gray-700 italic mb-4 min-h-[60px] text-sm line-clamp-3">
-                      &ldquo;{t.message}&rdquo;
-                    </p>
-                    <div className="flex justify-center mb-2 text-yellow-500">
-                      {Array.from({ length: 5 }).map((_, idx) => (
-                        <svg
-                          key={idx}
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill={idx < t.rating ? "currentColor" : "none"}
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          className="w-5 h-5"
-                          aria-hidden="true"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.003 6.145h6.462c.969 0 1.371 1.24.588 1.81l-5.234 3.805 2.003 6.145c.3.921-.755 1.688-1.539 1.118l-5.233-3.804-5.233 3.804c-.783.57-1.838-.197-1.539-1.118l2.003-6.145-5.234-3.805c-.783-.57-.38-1.81.588-1.81h6.462l2.003-6.145z"
-                          />
-                        </svg>
-                      ))}
-                    </div>
-                    <h4 className="font-semibold text-gray-800">{t.name}</h4>
-                    <span className="text-sm text-gray-500">{t.role}</span>
-                  </div>
-                </SwiperSlide>
-              ))}
-            </Swiper>
-            <div className="custom-pagination-testimonial mt-6"></div>
-          </div>
-        </section>
-      )}
+    {/* Mobile - Swiper with centered cards */}
+    <div className="block md:hidden px-2">
+      <Swiper
+        modules={[Pagination]}
+        spaceBetween={16}
+        slidesPerView={1}
+        centeredSlides={true}
+        loop={testimonials.length > 1}
+        pagination={{
+          clickable: true,
+          dynamicBullets: true,
+        }}
+        autoplay={false}
+        className="testimonial-swiper !pb-10"
+        breakpoints={{
+          480: {
+            slidesPerView: 1,
+            spaceBetween: 16,
+            centeredSlides: true,
+          },
+          640: {
+            slidesPerView: 1.2,
+            spaceBetween: 20,
+            centeredSlides: true,
+          },
+        }}
+      >
+        {testimonials.map((t, i) => (
+          <SwiperSlide key={`testimonial-mobile-${i}`}>
+            <div className="bg-white rounded-2xl shadow-lg p-6 h-full mx-auto w-[90%]">
+              {t.photo ? (
+                <div className="relative w-16 h-16 mx-auto mb-4">
+                  <Image
+                    src={t.photo}
+                    alt={`Foto ${t.name}`}
+                    width={64}
+                    height={64}
+                    loading="lazy"
+                    quality={60}
+                    className="rounded-full object-cover border-2 border-gray-300"
+                  />
+                </div>
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
+                  <User className="text-gray-600 w-8 h-8" />
+                </div>
+              )}
+              <p className="text-gray-700 italic mb-4 min-h-[60px] text-sm line-clamp-3">
+                &ldquo;{t.message}&rdquo;
+              </p>
+              <div className="flex justify-center mb-2 text-yellow-500">
+                {Array.from({ length: 5 }).map((_, idx) => (
+                  <svg
+                    key={idx}
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill={idx < t.rating ? "currentColor" : "none"}
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    className="w-5 h-5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.003 6.145h6.462c.969 0 1.371 1.24.588 1.81l-5.234 3.805 2.003 6.145c.3.921-.755 1.688-1.539 1.118l-5.233-3.804-5.233 3.804c-.783.57-1.838-.197-1.539-1.118l2.003-6.145-5.234-3.805c-.783-.57-.38-1.81.588-1.81h6.462l2.003-6.145z"
+                    />
+                  </svg>
+                ))}
+              </div>
+              <h4 className="font-semibold text-gray-800">{t.name}</h4>
+              <span className="text-sm text-gray-500">{t.role}</span>
+            </div>
+          </SwiperSlide>
+        ))}
+      </Swiper>
+    </div>
+  </section>
+)}
+
 
       {/* Why Choose Us */}
-      <section className="section-full-width bg-[#f3f4f6] py-16">
+      <section className="section-full-width bg-[#f3f4f6]">
         <div className="container mx-auto text-center px-4">
           <h2 className="text-2xl md:text-3xl font-bold mb-6">
             Mengapa Memilih Nikhu Studio

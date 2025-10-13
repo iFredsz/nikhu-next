@@ -155,13 +155,6 @@ h4 {
   margin-right: calc(-50vw + 50%);
   width: 100vw; 
   position: relative;
-  overflow-y: hidden !important;
-}
-
-.section-full-width .marquee {
-  will-change: transform;
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
 }
 
 .testimonial-container {

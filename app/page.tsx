@@ -512,7 +512,6 @@ const handleSubscribe = async () => {
           </Link>
         </div>
       </section>
-
       
 {/* Testimonials - Marquee for Desktop, Swiper for Mobile */}
 {testimonials.length > 0 && (
@@ -537,54 +536,14 @@ const handleSubscribe = async () => {
             key={`testimonial-desktop-${i}`}
             className="mx-3 w-[340px] bg-white rounded-2xl shadow-lg p-6 flex-shrink-0"
           >
-            {t.photo ? (
-              <div className="relative w-16 h-16 mx-auto mb-4">
-                <Image
-                  src={t.photo}
-                  alt={`Foto ${t.name}`}
-                  width={64}
-                  height={64}
-                  loading="lazy"
-                  quality={60}
-                  className="rounded-full object-cover border-2 border-gray-300"
-                />
-              </div>
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
-                <User className="text-gray-600 w-8 h-8" />
-              </div>
-            )}
-            <p className="text-gray-700 italic mb-4 min-h-[60px] text-base line-clamp-3">
-              &ldquo;{t.message}&rdquo;
-            </p>
-            <div className="flex justify-center mb-2 text-yellow-500">
-              {Array.from({ length: 5 }).map((_, idx) => (
-                <svg
-                  key={idx}
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill={idx < t.rating ? "currentColor" : "none"}
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  className="w-5 h-5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.003 6.145h6.462c.969 0 1.371 1.24.588 1.81l-5.234 3.805 2.003 6.145c.3.921-.755 1.688-1.539 1.118l-5.233-3.804-5.233 3.804c-.783.57-1.838-.197-1.539-1.118l2.003-6.145-5.234-3.805c-.783-.57-.38-1.81.588-1.81h6.462l2.003-6.145z"
-                  />
-                </svg>
-              ))}
-            </div>
-            <h4 className="font-semibold text-gray-800">{t.name}</h4>
-            <span className="text-sm text-gray-500">{t.role}</span>
+            {/* konten testimonial */}
           </div>
         ))}
       </Marquee>
     </div>
 
     {/* Mobile - Swiper */}
-    <div className="block md:hidden px-2">
+    <div className="block md:hidden px-2" style={{ overflow: 'hidden' }}>
       <Swiper
         modules={[Pagination]}
         spaceBetween={16}
@@ -612,57 +571,13 @@ const handleSubscribe = async () => {
       >
         {testimonials.map((t, i) => (
           <SwiperSlide key={`testimonial-mobile-${i}`}>
-            <div className="bg-white rounded-2xl shadow-lg p-6 h-full mx-auto w-[90%]">
-              {t.photo ? (
-                <div className="relative w-16 h-16 mx-auto mb-4">
-                  <Image
-                    src={t.photo}
-                    alt={`Foto ${t.name}`}
-                    width={64}
-                    height={64}
-                    loading="lazy"
-                    quality={60}
-                    className="rounded-full object-cover border-2 border-gray-300"
-                  />
-                </div>
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
-                  <User className="text-gray-600 w-8 h-8" />
-                </div>
-              )}
-              <p className="text-gray-700 italic mb-4 min-h-[60px] text-sm line-clamp-3">
-                &ldquo;{t.message}&rdquo;
-              </p>
-              <div className="flex justify-center mb-2 text-yellow-500">
-                {Array.from({ length: 5 }).map((_, idx) => (
-                  <svg
-                    key={idx}
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill={idx < t.rating ? "currentColor" : "none"}
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    className="w-5 h-5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.003 6.145h6.462c.969 0 1.371 1.24.588 1.81l-5.234 3.805 2.003 6.145c.3.921-.755 1.688-1.539 1.118l-5.233-3.804-5.233 3.804c-.783.57-1.838-.197-1.539-1.118l2.003-6.145-5.234-3.805c-.783-.57-.38-1.81.588-1.81h6.462l2.003-6.145z"
-                    />
-                  </svg>
-                ))}
-              </div>
-              <h4 className="font-semibold text-gray-800">{t.name}</h4>
-              <span className="text-sm text-gray-500">{t.role}</span>
-            </div>
+            {/* konten testimonial */}
           </SwiperSlide>
         ))}
       </Swiper>
     </div>
   </section>
 )}
-
-
 
       {/* Why Choose Us */}
       <section className="section-full-width bg-[#f3f4f6]">

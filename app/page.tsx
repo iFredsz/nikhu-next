@@ -21,7 +21,7 @@ import 'swiper/css/pagination'
 
 // Firebase
 import { db } from '../lib/firebase'
-import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore'
+import { collection, onSnapshot, doc, setDoc, getDoc } from 'firebase/firestore'
 
 const subtitles = [
   "Kreatif, Memukau, dan Tak Terlupakan",
@@ -211,24 +211,42 @@ export default function Home() {
   }, [selectedImg])
 
   // Newsletter handler
-  const handleSubscribe = async () => {
-    if (!email) {
-      toast.error("Masukkan email terlebih dahulu.");
+// Newsletter handler
+const handleSubscribe = async () => {
+  if (!email) {
+    toast.error("Masukkan email terlebih dahulu.");
+    return;
+  }
+
+  // Validasi format email sederhana
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    toast.error("Format email tidak valid.");
+    return;
+  }
+
+  try {
+    // Cek apakah email sudah ada di database
+    const emailDoc = await getDoc(doc(db, "newsletter", email));
+    
+    if (emailDoc.exists()) {
+      toast.error("Email ini sudah terdaftar.");
       return;
     }
 
-    try {
-      await setDoc(doc(db, "newsletter", email), {
-        email,
-        createdAt: new Date(),
-      });
-      toast.success("Terima kasih sudah subscribe!");
-      setEmail("");
-    } catch (error) {
-      console.error("Error menyimpan email:", error);
-      toast.error("Gagal subscribe, coba lagi.");
-    }
+    // Simpan email jika belum ada
+    await setDoc(doc(db, "newsletter", email), {
+      email,
+      createdAt: new Date(),
+    });
+    
+    toast.success("Terima kasih sudah subscribe!");
+    setEmail("");
+  } catch (error) {
+    console.error("Error menyimpan email:", error);
+    toast.error("Gagal subscribe, coba lagi.");
   }
+}
 
   return (
     <>

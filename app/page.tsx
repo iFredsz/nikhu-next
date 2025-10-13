@@ -53,7 +53,6 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true)
   const [marqueeSpeed, setMarqueeSpeed] = useState(40)
   const [isMobile, setIsMobile] = useState(false)
-  const [isMarqueePaused, setIsMarqueePaused] = useState(false)
 
   // Newsletter state
   const [email, setEmail] = useState<string>("")
@@ -62,12 +61,8 @@ export default function Home() {
   const nextRef = useRef<HTMLButtonElement>(null)
   const swiperRef = useRef<any>(null)
   const testimonialSwiperRef = useRef<any>(null)
-  const marqueeContainerRef = useRef<HTMLDivElement>(null)
-  const touchStartX = useRef<number>(0)
-  const touchEndX = useRef<number>(0)
-  const scrollPosition = useRef<number>(0)
 
-  // Add CSS animation
+  // Add CSS animation with critical styles
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
@@ -83,6 +78,50 @@ export default function Home() {
       }
       .animate-fadeInUp {
         animation: fadeInUp 0.4s ease-out forwards;
+        will-change: opacity, transform;
+      }
+      
+      /* Custom Pagination Styles */
+      .custom-pagination-portfolio,
+      .custom-pagination-testimonial {
+        position: relative !important;
+        bottom: -30px !important;
+        left: 0 !important;
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        contain: layout style paint;
+      }
+      
+      .swiper-pagination-bullet {
+        width: 10px !important;
+        height: 10px !important;
+        background: #d1d5db !important;
+        opacity: 1 !important;
+        transition: all 0.3s ease !important;
+        will-change: width, background;
+      }
+      
+      .swiper-pagination-bullet-active {
+        background: #3b82f6 !important;
+        width: 24px !important;
+        border-radius: 5px !important;
+      }
+      
+      /* Performance optimizations */
+      .swiper-slide {
+        will-change: transform;
+      }
+      
+      .rfm-marquee-container {
+        will-change: transform;
+        contain: layout style paint;
+      }
+      
+      /* Prevent layout shift */
+      img[loading="lazy"] {
+        content-visibility: auto;
       }
     `;
     document.head.appendChild(style);
@@ -91,37 +130,15 @@ export default function Home() {
     };
   }, []);
 
-  // Detect mobile
+  // Detect mobile with passive listener
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768)
     }
     checkMobile()
-    window.addEventListener('resize', checkMobile)
+    window.addEventListener('resize', checkMobile, { passive: true })
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
-
-  // Touch handlers for mobile marquee swipe
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX
-    setIsMarqueePaused(true)
-  }
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    touchEndX.current = e.touches[0].clientX
-  }
-
-  const handleTouchEnd = () => {
-    const swipeDistance = touchStartX.current - touchEndX.current
-    const minSwipeDistance = 50
-
-    if (Math.abs(swipeDistance) > minSwipeDistance) {
-      // Swipe detected - keep paused briefly then resume
-      setTimeout(() => setIsMarqueePaused(false), 300)
-    } else {
-      setIsMarqueePaused(false)
-    }
-  }
 
   // Ambil data portfolio dari Firestore
   useEffect(() => {
@@ -268,11 +285,13 @@ export default function Home() {
               height={420}
               priority
               fetchPriority="high"
-              quality={65}
+              quality={75}
               className="object-contain rounded-lg"
-              sizes="(max-width: 640px) 100vw, (max-width: 768px) 80vw, 412px"
+              sizes="(max-width: 640px) 100vw, (max-width: 768px) 80vw, 460px"
               loading="eager"
               decoding="async"
+              placeholder="blur"
+              blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDYwIiBoZWlnaHQ9IjQyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDYwIiBoZWlnaHQ9IjQyMCIgZmlsbD0iI2YzZjRmNiIvPjwvc3ZnPg=="
             />
             {/* Camera Flash Animation */}
             <motion.div
@@ -348,7 +367,7 @@ export default function Home() {
       </section>
 
       {/* Portfolio Section */}
-      <section className="section-full-width md:py-0 py-12 mb-8 relative">
+      <section className="section-full-width md:py-0 py-12 mb-16 relative">
         <div className="container mx-auto px-4">
           {portfolioImages.length > 0 && (
             <h2 className="text-3xl font-bold mb-6 text-center">Hasil Karya Kami</h2>
@@ -358,7 +377,7 @@ export default function Home() {
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500"></div>
             </div>
           ) : portfolioImages.length > 0 ? (
-            <div className="relative">
+            <div className="relative pb-12">
               <button
                 ref={prevRef}
                 aria-label="Sebelumnya"
@@ -379,10 +398,12 @@ export default function Home() {
                 modules={[Navigation, Pagination]}
                 spaceBetween={20}
                 slidesPerView={1}
+                centeredSlides={true}
                 loop={portfolioImages.length > 1}
                 pagination={{
                   clickable: true,
                   dynamicBullets: true,
+                  el: '.custom-pagination-portfolio',
                 }}
                 navigation={{
                   prevEl: prevRef.current,
@@ -392,16 +413,19 @@ export default function Home() {
                 onInit={updateSwiperNavigation}
                 breakpoints={{
                   640: { 
-                    slidesPerView: Math.min(portfolioImages.length, 2),
-                    spaceBetween: 20
+                    slidesPerView: 1.15,
+                    spaceBetween: 20,
+                    centeredSlides: true,
                   },
                   768: {
-                    slidesPerView: Math.min(portfolioImages.length, 2),
-                    spaceBetween: 25
+                    slidesPerView: 2,
+                    spaceBetween: 25,
+                    centeredSlides: false,
                   },
                   1024: { 
                     slidesPerView: Math.min(portfolioImages.length, 3),
-                    spaceBetween: 30
+                    spaceBetween: 30,
+                    centeredSlides: false,
                   },
                 }}
                 className="px-2"
@@ -421,13 +445,14 @@ export default function Home() {
                           loading={index === 0 ? "eager" : "lazy"}
                           quality={65}
                           className="object-cover hover:scale-105 transition-transform duration-300"
-                          sizes="(max-width: 640px) 100vw, (max-width: 768px) 48vw, (max-width: 1024px) 32vw, 380px"
+                          sizes="(max-width: 640px) 90vw, (max-width: 768px) 48vw, (max-width: 1024px) 32vw, 380px"
                         />
                       </div>
                     </div>
                   </SwiperSlide>
                 ))}
               </Swiper>
+              <div className="custom-pagination-portfolio"></div>
             </div>
           ) : (
             !isLoading && (
@@ -495,7 +520,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Testimonials - Marquee for All Devices with Mobile Swipe Support */}
+      {/* Testimonials - Marquee for Desktop, Swiper for Mobile */}
       {testimonials.length > 0 && (
         <section
           className="section-full-width py-16 text-center relative bg-[#f3f4f6]"
@@ -504,27 +529,22 @@ export default function Home() {
             Apa Kata Klien Kami
           </h2>
           
-          <div 
-            ref={marqueeContainerRef}
-            className="w-full overflow-x-hidden touch-pan-x"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
+          {/* Desktop - Marquee */}
+          <div className="hidden md:block w-full overflow-x-hidden">
             <Marquee
-              speed={isMobile ? 30 : 40}
+              speed={marqueeSpeed}
               gradient={true}
               gradientColor="#f3f4f6"
-              gradientWidth={isMobile ? 30 : 50}
+              gradientWidth={50}
               pauseOnHover={true}
-              play={!isMarqueePaused}
               className="py-4"
+              play={true}
             >
               {testimonials.map((t, i) => (
                 <div
-                  key={`testimonial-${i}`}
-                  className="mx-3 w-[300px] md:w-[340px] bg-white rounded-2xl shadow-lg p-6 flex-shrink-0 select-none"
-                  style={{ willChange: 'transform', touchAction: 'pan-x' }}
+                  key={`testimonial-desktop-${i}`}
+                  className="mx-3 w-[340px] bg-white rounded-2xl shadow-lg p-6 flex-shrink-0"
+                  style={{ willChange: 'transform' }}
                 >
                   {t.photo ? (
                     <div className="relative w-16 h-16 mx-auto mb-4">
@@ -535,8 +555,7 @@ export default function Home() {
                         height={64}
                         loading="lazy"
                         quality={60}
-                        className="rounded-full object-cover border-2 border-gray-300 pointer-events-none"
-                        draggable={false}
+                        className="rounded-full object-cover border-2 border-gray-300"
                       />
                     </div>
                   ) : (
@@ -544,7 +563,7 @@ export default function Home() {
                       <User className="text-gray-600 w-8 h-8" />
                     </div>
                   )}
-                  <p className="text-gray-700 italic mb-4 min-h-[60px] text-sm md:text-base line-clamp-3">
+                  <p className="text-gray-700 italic mb-4 min-h-[60px] text-base line-clamp-3">
                     &ldquo;{t.message}&rdquo;
                   </p>
                   <div className="flex justify-center mb-2 text-yellow-500">
@@ -572,6 +591,84 @@ export default function Home() {
                 </div>
               ))}
             </Marquee>
+          </div>
+
+          {/* Mobile - Swiper */}
+          <div className="block md:hidden pb-12">
+            <Swiper
+              modules={[Pagination]}
+              spaceBetween={16}
+              slidesPerView={1}
+              centeredSlides={true}
+              loop={testimonials.length > 1}
+              pagination={{
+                clickable: true,
+                dynamicBullets: true,
+                el: '.custom-pagination-testimonial',
+              }}
+              breakpoints={{
+                480: {
+                  slidesPerView: 1.1,
+                  spaceBetween: 20,
+                  centeredSlides: true,
+                },
+                640: {
+                  slidesPerView: 1.2,
+                  spaceBetween: 20,
+                  centeredSlides: true,
+                },
+              }}
+            >
+              {testimonials.map((t, i) => (
+                <SwiperSlide key={`testimonial-mobile-${i}`}>
+                  <div className="bg-white rounded-2xl shadow-lg p-6 h-full mx-2">
+                    {t.photo ? (
+                      <div className="relative w-16 h-16 mx-auto mb-4">
+                        <Image
+                          src={t.photo}
+                          alt={`Foto ${t.name}`}
+                          width={64}
+                          height={64}
+                          loading="lazy"
+                          quality={60}
+                          className="rounded-full object-cover border-2 border-gray-300"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
+                        <User className="text-gray-600 w-8 h-8" />
+                      </div>
+                    )}
+                    <p className="text-gray-700 italic mb-4 min-h-[60px] text-sm line-clamp-3">
+                      &ldquo;{t.message}&rdquo;
+                    </p>
+                    <div className="flex justify-center mb-2 text-yellow-500">
+                      {Array.from({ length: 5 }).map((_, idx) => (
+                        <svg
+                          key={idx}
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill={idx < t.rating ? "currentColor" : "none"}
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          className="w-5 h-5"
+                          aria-hidden="true"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.003 6.145h6.462c.969 0 1.371 1.24.588 1.81l-5.234 3.805 2.003 6.145c.3.921-.755 1.688-1.539 1.118l-5.233-3.804-5.233 3.804c-.783.57-1.838-.197-1.539-1.118l2.003-6.145-5.234-3.805c-.783-.57-.38-1.81.588-1.81h6.462l2.003-6.145z"
+                          />
+                        </svg>
+                      ))}
+                    </div>
+                    <h4 className="font-semibold text-gray-800">{t.name}</h4>
+                    <span className="text-sm text-gray-500">{t.role}</span>
+                  </div>
+                </SwiperSlide>
+              ))}
+            </Swiper>
+            <div className="custom-pagination-testimonial"></div>
           </div>
         </section>
       )}

@@ -7,7 +7,7 @@ export default function OrderSuccessPlaceholder() {
 
       <p className='mt-8 text-center font-semibold'>
         Best, <br />
-        Fredsz (Nikhu IT Support)
+        @Fredsz_ (Nikhu IT Support)
       </p>
     </>
   )

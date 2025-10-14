@@ -156,9 +156,9 @@ export default function Contact() {
                   },
                   {
                     icon: MapPin,
-                    text: "Kota Salatiga",
+                    text: "Jl. Dliko Indah No.251, Blotongan, Kec. Sidorejo",
                     onClick: openGoogleMaps,
-                    description: "Jawa Tengah, 50715",
+                    description: "Kota Salatiga, Jawa Tengah 50715",
                   },
                 ].map((item, index) => (
                   <motion.div

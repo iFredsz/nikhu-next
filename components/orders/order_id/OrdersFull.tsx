@@ -82,6 +82,7 @@ const OrdersFull = () => {
   const [isClient, setIsClient] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
+  const [previousOrderIds, setPreviousOrderIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setIsClient(true);

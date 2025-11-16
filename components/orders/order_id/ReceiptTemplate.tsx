@@ -79,7 +79,7 @@ export default function ReceiptTemplate({ orderData, orderId }: Props) {
         <h1 style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '2px' }}>NIKHU STUDIO</h1>
         <p style={{ margin: 0, fontSize: '10px' }}>Professional Photography</p>
         <p style={{ margin: 0, fontSize: '10px' }}>Jl. Dliko Indah No.251, Blotongan, Kec. Sidorejo, Salatiga</p>
-        <p style={{ margin: 0, fontSize: '10px' }}>Telp: +62 857-0226-2321</p>
+        <p style={{ margin: 0, fontSize: '10px' }}>Telp: +62 881-4153-292</p>
       </div>
 
       {/* Order Info */}

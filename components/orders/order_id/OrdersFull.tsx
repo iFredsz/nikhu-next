@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDocs, limit, startAfter, where } from 'firebase/firestore';
+import { useState, useEffect } from 'react';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Loader2, Edit2, Check, Search, ChevronDown, ChevronUp, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Edit2, Check, Search, ChevronDown, ChevronUp, X } from 'lucide-react';
 import React from 'react';
 import DownloadReceipt from './DownloadReceipt';
 import { toast } from 'sonner';
@@ -70,8 +70,6 @@ type Order = {
   date?: any;
 };
 
-const ORDERS_PER_PAGE = 10;
-
 const OrdersFull = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,9 +78,6 @@ const OrdersFull = () => {
   const [editData, setEditData] = useState<Partial<Order>>({});
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [isClient, setIsClient] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalOrders, setTotalOrders] = useState(0);
-  const [previousOrderIds, setPreviousOrderIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setIsClient(true);
@@ -103,19 +98,11 @@ const OrdersFull = () => {
         
         if (!mounted) return;
         
-        // Collect all orders from all users
-        const allOrders: Order[] = [];
-        
         for (const userDoc of usersSnapshot.docs) {
           const userId = userDoc.id;
           const ordersRef = collection(db, 'users', userId, 'orders');
-          const ordersQuery = query(
-            ordersRef, 
-            where('payment_status', '==', 'success'),
-            orderBy('created_at', 'desc')
-          );
+          const ordersQuery = query(ordersRef, orderBy('created_at', 'desc'));
           
-          // Setup real-time listener
           const userUnsubscribe = onSnapshot(ordersQuery, 
             (ordersSnapshot) => {
               if (!mounted) return;
@@ -127,97 +114,100 @@ const OrdersFull = () => {
                 ordersSnapshot.forEach(doc => {
                   const data = doc.data();
                   
-                  const order: Order = {
-                    id: doc.id,
-                    uid: userId,
-                    order_id: data.order_id || '',
-                    midtrans_order_id: data.midtrans_order_id || '',
-                    customer_name: data.customer_name || '',
-                    customer_wa: data.customer_wa || '',
-                    gross_amount: data.gross_amount || 0,
-                    payment_status: data.payment_status || '',
-                    created_at: data.created_at || new Date().toISOString(),
-                    updated_at: data.updated_at || null,
-                    midtrans_items: Array.isArray(data.midtrans_items) ? data.midtrans_items : [],
-                    original_cart_items: Array.isArray(data.original_cart_items) ? data.original_cart_items : [],
-                    total_people: data.total_people || 0,
-                    total_quantity: data.total_quantity || 0,
-                    total_sessions: data.total_sessions || 0,
-                    redirect_url: data.redirect_url || '',
-                    token: data.token || '',
-                    voucherDiscount: data.voucherDiscount || '',
-                    date: data.date || null
-                  };
-                  
-                  newOrdersForUser.push(order);
+                  if (data.payment_status === 'success') {
+                    const order: Order = {
+                      id: doc.id,
+                      uid: userId,
+                      order_id: data.order_id || '',
+                      midtrans_order_id: data.midtrans_order_id || '',
+                      customer_name: data.customer_name || '',
+                      customer_wa: data.customer_wa || '',
+                      gross_amount: data.gross_amount || 0,
+                      payment_status: data.payment_status || '',
+                      created_at: data.created_at || new Date().toISOString(),
+                      updated_at: data.updated_at || null,
+                      midtrans_items: Array.isArray(data.midtrans_items) ? data.midtrans_items : [],
+                      original_cart_items: Array.isArray(data.original_cart_items) ? data.original_cart_items : [],
+                      total_people: data.total_people || 0,
+                      total_quantity: data.total_quantity || 0,
+                      total_sessions: data.total_sessions || 0,
+                      redirect_url: data.redirect_url || '',
+                      token: data.token || '',
+                      voucherDiscount: data.voucherDiscount || '',
+                      date: data.date || null
+                    };
+                    
+                    newOrdersForUser.push(order);
+                  }
                 });
                 
                 const updatedOrders = [...filteredOrders, ...newOrdersForUser];
                 updatedOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                 
-                setTotalOrders(updatedOrders.length);
                 return updatedOrders;
               });
             },
             (error) => {
               console.error(`Error in real-time listener for user ${userId}:`, error);
+              toast.error('Error loading orders');
             }
           );
           
           unsubscribeFunctions.push(userUnsubscribe);
 
-          // Fetch initial data
           try {
             const initialOrdersSnapshot = await getDocs(ordersQuery);
-            
+            if (!mounted) return;
+
+            const initialOrders: Order[] = [];
             initialOrdersSnapshot.forEach(doc => {
               const data = doc.data();
               
-              const order: Order = {
-                id: doc.id,
-                uid: userId,
-                order_id: data.order_id || '',
-                midtrans_order_id: data.midtrans_order_id || '',
-                customer_name: data.customer_name || '',
-                customer_wa: data.customer_wa || '',
-                gross_amount: data.gross_amount || 0,
-                payment_status: data.payment_status || '',
-                created_at: data.created_at || new Date().toISOString(),
-                updated_at: data.updated_at || null,
-                midtrans_items: Array.isArray(data.midtrans_items) ? data.midtrans_items : [],
-                original_cart_items: Array.isArray(data.original_cart_items) ? data.original_cart_items : [],
-                total_people: data.total_people || 0,
-                total_quantity: data.total_quantity || 0,
-                total_sessions: data.total_sessions || 0,
-                redirect_url: data.redirect_url || '',
-                token: data.token || '',
-                voucherDiscount: data.voucherDiscount || '',
-                date: data.date || null
-              };
-              
-              allOrders.push(order);
+              if (data.payment_status === 'success') {
+                const order: Order = {
+                  id: doc.id,
+                  uid: userId,
+                  order_id: data.order_id || '',
+                  midtrans_order_id: data.midtrans_order_id || '',
+                  customer_name: data.customer_name || '',
+                  customer_wa: data.customer_wa || '',
+                  gross_amount: data.gross_amount || 0,
+                  payment_status: data.payment_status || '',
+                  created_at: data.created_at || new Date().toISOString(),
+                  updated_at: data.updated_at || null,
+                  midtrans_items: Array.isArray(data.midtrans_items) ? data.midtrans_items : [],
+                  original_cart_items: Array.isArray(data.original_cart_items) ? data.original_cart_items : [],
+                  total_people: data.total_people || 0,
+                  total_quantity: data.total_quantity || 0,
+                  total_sessions: data.total_sessions || 0,
+                  redirect_url: data.redirect_url || '',
+                  token: data.token || '',
+                  voucherDiscount: data.voucherDiscount || '',
+                  date: data.date || null
+                };
+                
+                initialOrders.push(order);
+              }
+            });
+
+            setOrders(prev => {
+              const filtered = prev.filter(order => order.uid !== userId);
+              const combined = [...filtered, ...initialOrders];
+              combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+              return combined;
             });
           } catch (error) {
             console.error(`Error fetching initial orders for user ${userId}:`, error);
+            toast.error('Error loading initial orders');
           }
         }
         
-        // Sort all orders by created_at
-        allOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        
-        if (mounted) {
-          setOrders(allOrders);
-          setPreviousOrderIds(new Set(allOrders.map(o => o.order_id)));
-          setTotalOrders(allOrders.length);
-          setLoading(false);
-        }
+        setLoading(false);
         
       } catch (error) {
         console.error('Error setting up real-time listeners:', error);
         toast.error('Failed to setup order listeners');
-        if (mounted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
 
@@ -229,36 +219,6 @@ const OrdersFull = () => {
     };
 
   }, [isClient]);
-
-  // Filter orders based on search
-  const filteredOrders = useMemo(() => {
-    if (!searchTerm.trim()) return orders;
-    
-    const lowerSearch = searchTerm.toLowerCase();
-    return orders.filter(order => {
-      const mainProduct = order.midtrans_items?.[0] || order.original_cart_items?.[0];
-      return (
-        order.order_id.toLowerCase().includes(lowerSearch) ||
-        order.customer_name.toLowerCase().includes(lowerSearch) ||
-        order.customer_wa.toLowerCase().includes(lowerSearch) ||
-        (mainProduct?.name?.toLowerCase() || '').includes(lowerSearch)
-      );
-    });
-  }, [orders, searchTerm]);
-
-  // Paginate filtered orders
-  const paginatedOrders = useMemo(() => {
-    const startIndex = (currentPage - 1) * ORDERS_PER_PAGE;
-    const endIndex = startIndex + ORDERS_PER_PAGE;
-    return filteredOrders.slice(startIndex, endIndex);
-  }, [filteredOrders, currentPage]);
-
-  const totalPages = Math.ceil(filteredOrders.length / ORDERS_PER_PAGE);
-
-  // Reset to page 1 when search changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm]);
 
   const toggleRowExpand = (id: string) => {
     setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
@@ -339,6 +299,14 @@ const OrdersFull = () => {
     }).format(amount);
   };
 
+  const filteredOrders = orders.filter(order =>
+    (order.order_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.customer_wa.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (order.midtrans_items?.[0]?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (order.original_cart_items?.[0]?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()))
+  );
+
   const getMainProduct = (order: Order) => {
     return order.midtrans_items?.[0] || order.original_cart_items?.[0] || null;
   };
@@ -356,11 +324,6 @@ const OrdersFull = () => {
   const getBookingDate = (order: Order) => {
     const mainItem = order.original_cart_items?.[0];
     return mainItem?.date || order.date || '-';
-  };
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   if (!isClient) {
@@ -381,7 +344,7 @@ const OrdersFull = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-800">All Orders</h1>
           <div className="text-sm text-gray-600 bg-green-50 px-3 py-1 rounded-full mt-1 inline-block">
-            Total: {filteredOrders.length} {searchTerm ? 'filtered' : 'successful'} orders
+            Total: {orders.length} successful orders
           </div>
         </div>
       </div>
@@ -407,399 +370,315 @@ const OrdersFull = () => {
           <span className="ml-2 text-gray-600">Loading orders...</span>
         </div>
       ) : (
-        <>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Order ID</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Customer</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Product</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Amount</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredOrders.length === 0 ? (
                   <tr>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Order ID</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Customer</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Product</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Amount</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Status</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 text-xs uppercase tracking-wider">Actions</th>
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500 text-sm">
+                      {searchTerm ? 'No orders found matching your search' : 'No successful orders found'}
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedOrders.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-gray-500 text-sm">
-                        {searchTerm ? 'No orders found matching your search' : 'No successful orders found'}
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedOrders.map((order) => {
-                      const mainProduct = getMainProduct(order);
-                      const addons = getAddons(order);
-                      const sessions = getSessions(order);
-                      const bookingDate = getBookingDate(order);
+                ) : (
+                  filteredOrders.map((order) => {
+                    const mainProduct = getMainProduct(order);
+                    const addons = getAddons(order);
+                    const sessions = getSessions(order);
+                    const bookingDate = getBookingDate(order);
 
-                      return (
-                        <React.Fragment key={order.id}>
-                          {/* Main row */}
-                          <tr className="hover:bg-gray-50 transition-colors duration-150">
-                            <td className="px-4 py-3 whitespace-nowrap font-medium">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => toggleRowExpand(order.id)}
-                                  className="text-gray-500 hover:text-gray-700 transition-colors"
-                                >
-                                  {expandedRows[order.id] ? (
-                                    <ChevronUp className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronDown className="h-4 w-4" />
-                                  )}
-                                </button>
-                                <span className="text-gray-900 font-mono text-xs">{order.order_id}</span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div>
-                                <div className="font-medium text-gray-900">{order.customer_name}</div>
-                                <div className="text-xs text-gray-500 font-mono">{order.customer_wa}</div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="max-w-[250px]">
-                                <div className="font-medium text-gray-900 truncate" title={mainProduct?.name}>
-                                  {mainProduct?.name || 'N/A'}
-                                </div>
-                                <div className="flex flex-wrap gap-2 mt-1">
-                                  {mainProduct?.quantity && mainProduct.quantity > 1 && (
-                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">Qty: {mainProduct.quantity}</span>
-                                  )}
-                                  {mainProduct?.people && (
-                                    <span className="text-xs text-gray-500 bg-blue-50 px-2 py-0.5 rounded flex items-center gap-1">
-                                      👥 {mainProduct.people}
-                                    </span>
-                                  )}
-                                  {bookingDate && bookingDate !== '-' && (
-                                    <span className="text-xs text-gray-500 bg-purple-50 px-2 py-0.5 rounded">📅 {bookingDate}</span>
-                                  )}
-                                  {sessions.length > 0 && (
-                                    <span className="text-xs text-gray-500 bg-green-50 px-2 py-0.5 rounded">⏰ {sessions.length} sesi</span>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <span className="font-medium text-gray-900">{formatCurrency(order.gross_amount)}</span>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              {editingId === order.id ? (
-                                <select
-                                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                  value={editData.payment_status || order.payment_status}
-                                  onChange={(e) => setEditData({ ...editData, payment_status: e.target.value })}
-                                >
-                                  <option value="pending">Pending</option>
-                                  <option value="success">Success</option>
-                                  <option value="failed">Failed</option>
-                                  <option value="expired">Expired</option>
-                                </select>
-                              ) : (
-                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                  order.payment_status === 'success' ? 'bg-green-100 text-green-800' :
-                                  order.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                  order.payment_status === 'failed' ? 'bg-red-100 text-red-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {order.payment_status}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="flex gap-2">
-                                {editingId === order.id ? (
-                                  <>
-                                    <button
-                                      onClick={() => handleSave(order.id)}
-                                      className="text-green-600 hover:text-green-800 p-1 transition-colors"
-                                      title="Save"
-                                    >
-                                      <Check className="h-5 w-5" />
-                                    </button>
-                                    <button
-                                      onClick={handleCancelEdit}
-                                      className="text-gray-600 hover:text-gray-800 p-1 transition-colors"
-                                      title="Cancel"
-                                    >
-                                      <X className="h-5 w-5" />
-                                    </button>
-                                  </>
+                    return (
+                      <React.Fragment key={order.id}>
+                        {/* Main row */}
+                        <tr className="hover:bg-gray-50 transition-colors duration-150">
+                          <td className="px-4 py-3 whitespace-nowrap font-medium">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => toggleRowExpand(order.id)}
+                                className="text-gray-500 hover:text-gray-700 transition-colors"
+                              >
+                                {expandedRows[order.id] ? (
+                                  <ChevronUp className="h-4 w-4" />
                                 ) : (
-                                  <>
-                                    <button
-                                      onClick={() => handleEdit(order)}
-                                      className="text-blue-600 hover:text-blue-800 p-1 transition-colors"
-                                      title="Edit Status"
-                                    >
-                                      <Edit2 className="h-5 w-5" />
-                                    </button>
-                                    <DownloadReceipt 
-                                      orderData={order}
-                                      orderId={order.order_id}
-                                    />
-                                  </>
+                                  <ChevronDown className="h-4 w-4" />
+                                )}
+                              </button>
+                              <span className="text-gray-900 font-mono text-xs">{order.order_id}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div>
+                              <div className="font-medium text-gray-900">{order.customer_name}</div>
+                              <div className="text-xs text-gray-500 font-mono">{order.customer_wa}</div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="max-w-[250px]">
+                              <div className="font-medium text-gray-900 truncate" title={mainProduct?.name}>
+                                {mainProduct?.name || 'N/A'}
+                              </div>
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {mainProduct?.quantity && mainProduct.quantity > 1 && (
+                                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">Qty: {mainProduct.quantity}</span>
+                                )}
+                                {mainProduct?.people && (
+                                  <span className="text-xs text-gray-500 bg-blue-50 px-2 py-0.5 rounded flex items-center gap-1">
+                                    👥 {mainProduct.people}
+                                  </span>
+                                )}
+                                {bookingDate && bookingDate !== '-' && (
+                                  <span className="text-xs text-gray-500 bg-purple-50 px-2 py-0.5 rounded">📅 {bookingDate}</span>
+                                )}
+                                {sessions.length > 0 && (
+                                  <span className="text-xs text-gray-500 bg-green-50 px-2 py-0.5 rounded">⏰ {sessions.length} sesi</span>
                                 )}
                               </div>
-                            </td>
-                          </tr>
-                          {/* Expanded row */}
-                          {expandedRows[order.id] && (
-                            <tr className="bg-gray-50">
-                              <td colSpan={6} className="px-4 py-4">
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-sm p-4">
-                                  {/* Order Details */}
-                                  <div className="space-y-4">
-                                    <div>
-                                      <h3 className="font-semibold text-gray-900 mb-3 text-base">Order Details</h3>
-                                      
-                                      <div className="space-y-2 bg-white rounded-lg border border-gray-200 p-4">
-                                        <div className="flex justify-between">
-                                          <span className="text-gray-600">Order ID:</span>
-                                          <span className="font-medium text-gray-900 font-mono">{order.order_id}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                          <span className="text-gray-600">Midtrans Order ID:</span>
-                                          <span className="font-medium text-gray-900 font-mono">{order.midtrans_order_id}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                          <span className="text-gray-600">User ID:</span>
-                                          <span className="font-medium text-gray-900 font-mono text-xs">{order.uid}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                          <span className="text-gray-600">Total People:</span>
-                                          <span className="font-medium text-gray-900">{order.total_people}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                          <span className="text-gray-600">Total Sessions:</span>
-                                          <span className="font-medium text-gray-900">{order.total_sessions}</span>
-                                        </div>
-                                        {order.voucherDiscount && (
-                                          <div className="flex justify-between">
-                                            <span className="text-gray-600">Voucher Discount:</span>
-                                            <span className="font-medium text-green-600">{order.voucherDiscount}</span>
-                                          </div>
-                                        )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="font-medium text-gray-900">{formatCurrency(order.gross_amount)}</span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {editingId === order.id ? (
+                              <select
+                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                value={editData.payment_status || order.payment_status}
+                                onChange={(e) => setEditData({ ...editData, payment_status: e.target.value })}
+                              >
+                                <option value="pending">Pending</option>
+                                <option value="success">Success</option>
+                                <option value="failed">Failed</option>
+                                <option value="expired">Expired</option>
+                              </select>
+                            ) : (
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                order.payment_status === 'success' ? 'bg-green-100 text-green-800' :
+                                order.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                order.payment_status === 'failed' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {order.payment_status}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="flex gap-2">
+                              {editingId === order.id ? (
+                                <>
+                                  <button
+                                    onClick={() => handleSave(order.id)}
+                                    className="text-green-600 hover:text-green-800 p-1 transition-colors"
+                                    title="Save"
+                                  >
+                                    <Check className="h-5 w-5" />
+                                  </button>
+                                  <button
+                                    onClick={handleCancelEdit}
+                                    className="text-gray-600 hover:text-gray-800 p-1 transition-colors"
+                                    title="Cancel"
+                                  >
+                                    <X className="h-5 w-5" />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => handleEdit(order)}
+                                    className="text-blue-600 hover:text-blue-800 p-1 transition-colors"
+                                    title="Edit Status"
+                                  >
+                                    <Edit2 className="h-5 w-5" />
+                                  </button>
+                                  <DownloadReceipt 
+                                    orderData={order}
+                                    orderId={order.order_id}
+                                  />
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                        {/* Expanded row */}
+                        {expandedRows[order.id] && (
+                          <tr className="bg-gray-50">
+                            <td colSpan={6} className="px-4 py-4">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-sm p-4">
+                                {/* Order Details */}
+                                <div className="space-y-4">
+                                  <div>
+                                    <h3 className="font-semibold text-gray-900 mb-3 text-base">Order Details</h3>
+                                    
+                                    <div className="space-y-2 bg-white rounded-lg border border-gray-200 p-4">
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">Order ID:</span>
+                                        <span className="font-medium text-gray-900 font-mono">{order.order_id}</span>
                                       </div>
-                                    </div>
-
-                                    {/* Payment Info */}
-                                    <div>
-                                      <h3 className="font-semibold text-gray-900 mb-3 text-base">Payment Information</h3>
-                                      <div className="space-y-2 bg-white rounded-lg border border-gray-200 p-4">
-                                        <div className="flex justify-between">
-                                          <span className="text-gray-600">Gross Amount:</span>
-                                          <span className="font-medium text-gray-900">{formatCurrency(order.gross_amount)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                          <span className="text-gray-600">Status:</span>
-                                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                            order.payment_status === 'success' ? 'bg-green-100 text-green-800' :
-                                            order.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                            order.payment_status === 'failed' ? 'bg-red-100 text-red-800' :
-                                            'bg-gray-100 text-gray-800'
-                                          }`}>
-                                            {order.payment_status}
-                                          </span>
-                                        </div>
-                                        {order.redirect_url && (
-                                          <div className="flex justify-between items-center">
-                                            <span className="text-gray-600">Payment Link:</span>
-                                            <a 
-                                              href={order.redirect_url} 
-                                              target="_blank" 
-                                              rel="noopener noreferrer"
-                                              className="text-blue-600 hover:text-blue-800 hover:underline text-sm font-medium"
-                                            >
-                                              View Payment
-                                            </a>
-                                          </div>
-                                        )}
-                                        <div className="flex justify-between">
-                                          <span className="text-gray-600">Created:</span>
-                                          <span className="font-medium text-gray-900 text-xs">{formatDate(order.created_at)}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                          <span className="text-gray-600">Updated:</span>
-                                          <span className="font-medium text-gray-900 text-xs">{formatDate(order.updated_at)}</span>
-                                        </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">Midtrans Order ID:</span>
+                                        <span className="font-medium text-gray-900 font-mono">{order.midtrans_order_id}</span>
                                       </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Product Details */}
-                                  <div className="space-y-4">
-                                    {/* Main Product */}
-                                    <div>
-                                      <h3 className="font-semibold text-gray-900 mb-3 text-base">Product Details</h3>
-                                      {mainProduct && (
-                                        <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-2">
-                                          <h4 className="font-medium text-gray-900">{mainProduct.name}</h4>
-                                          <div className="grid grid-cols-2 gap-2 text-sm">
-                                            <div className="text-gray-600">Price:</div>
-                                            <div className="font-medium text-gray-900">{formatCurrency(mainProduct.price)}</div>
-                                            <div className="text-gray-600">Quantity:</div>
-                                            <div className="font-medium text-gray-900">{mainProduct.quantity}</div>
-                                            {mainProduct.people && (
-                                              <>
-                                                <div className="text-gray-600">People:</div>
-                                                <div className="font-medium text-gray-900">{mainProduct.people}</div>
-                                              </>
-                                            )}
-                                            {mainProduct.category && (
-                                              <>
-                                                <div className="text-gray-600">Category:</div>
-                                                <div className="font-medium text-gray-900">{mainProduct.category}</div>
-                                              </>
-                                            )}
-                                            {bookingDate && bookingDate !== '-' && (
-                                              <>
-                                                <div className="text-gray-600">Booking Date:</div>
-                                                <div className="font-medium text-gray-900">{bookingDate}</div>
-                                              </>
-                                            )}
-                                          </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">User ID:</span>
+                                        <span className="font-medium text-gray-900 font-mono text-xs">{order.uid}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">Total People:</span>
+                                        <span className="font-medium text-gray-900">{order.total_people}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">Total Sessions:</span>
+                                        <span className="font-medium text-gray-900">{order.total_sessions}</span>
+                                      </div>
+                                      {order.voucherDiscount && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-600">Voucher Discount:</span>
+                                          <span className="font-medium text-green-600">{order.voucherDiscount}</span>
                                         </div>
                                       )}
                                     </div>
+                                  </div>
 
-                                    {/* Addons */}
-                                    {addons.length > 0 && (
-                                      <div>
-                                        <h3 className="font-semibold text-gray-900 mb-3 text-base">Addons ({addons.length})</h3>
-                                        <div className="space-y-2">
-                                          {addons.map((addon, index) => (
-                                            <div key={index} className="bg-white rounded-lg border border-gray-200 p-3">
-                                              <div className="flex justify-between items-start">
-                                                <div>
-                                                  <div className="font-medium text-gray-900">{addon.name}</div>
-                                                  <div className="text-sm text-gray-600 mt-1">
-                                                    {formatCurrency(addon.price)} × {addon.qty}
-                                                  </div>
-                                                </div>
-                                                <div className="font-medium text-gray-900">
-                                                  {formatCurrency(addon.price * addon.qty)}
-                                                </div>
-                                              </div>
-                                            </div>
-                                          ))}
-                                        </div>
+                                  {/* Payment Info */}
+                                  <div>
+                                    <h3 className="font-semibold text-gray-900 mb-3 text-base">Payment Information</h3>
+                                    <div className="space-y-2 bg-white rounded-lg border border-gray-200 p-4">
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">Gross Amount:</span>
+                                        <span className="font-medium text-gray-900">{formatCurrency(order.gross_amount)}</span>
                                       </div>
-                                    )}
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">Status:</span>
+                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                          order.payment_status === 'success' ? 'bg-green-100 text-green-800' :
+                                          order.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                          order.payment_status === 'failed' ? 'bg-red-100 text-red-800' :
+                                          'bg-gray-100 text-gray-800'
+                                        }`}>
+                                          {order.payment_status}
+                                        </span>
+                                      </div>
+                                      {order.redirect_url && (
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-gray-600">Payment Link:</span>
+                                          <a 
+                                            href={order.redirect_url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-blue-600 hover:text-blue-800 hover:underline text-sm font-medium"
+                                          >
+                                            View Payment
+                                          </a>
+                                        </div>
+                                      )}
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">Created:</span>
+                                        <span className="font-medium text-gray-900 text-xs">{formatDate(order.created_at)}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">Updated:</span>
+                                        <span className="font-medium text-gray-900 text-xs">{formatDate(order.updated_at)}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
 
-                                    {/* Sessions */}
-                                    {sessions.length > 0 && (
-                                      <div>
-                                        <h3 className="font-semibold text-gray-900 mb-3 text-base">Sessions ({sessions.length})</h3>
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                          {sessions.map((session, index) => (
-                                            <div key={index} className="bg-white rounded-lg border border-gray-200 p-3 text-center">
-                                              <div className="text-sm font-medium text-gray-900">Session {index + 1}</div>
-                                              <div className="text-xs text-gray-600 mt-1">{session}</div>
-                                            </div>
-                                          ))}
+                                {/* Product Details */}
+                                <div className="space-y-4">
+                                  {/* Main Product */}
+                                  <div>
+                                    <h3 className="font-semibold text-gray-900 mb-3 text-base">Product Details</h3>
+                                    {mainProduct && (
+                                      <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-2">
+                                        <h4 className="font-medium text-gray-900">{mainProduct.name}</h4>
+                                        <div className="grid grid-cols-2 gap-2 text-sm">
+                                          <div className="text-gray-600">Price:</div>
+                                          <div className="font-medium text-gray-900">{formatCurrency(mainProduct.price)}</div>
+                                          <div className="text-gray-600">Quantity:</div>
+                                          <div className="font-medium text-gray-900">{mainProduct.quantity}</div>
+                                          {mainProduct.people && (
+                                            <>
+                                              <div className="text-gray-600">People:</div>
+                                              <div className="font-medium text-gray-900">{mainProduct.people}</div>
+                                            </>
+                                          )}
+                                          {mainProduct.category && (
+                                            <>
+                                              <div className="text-gray-600">Category:</div>
+                                              <div className="font-medium text-gray-900">{mainProduct.category}</div>
+                                            </>
+                                          )}
+                                          {bookingDate && bookingDate !== '-' && (
+                                            <>
+                                              <div className="text-gray-600">Booking Date:</div>
+                                              <div className="font-medium text-gray-900">{bookingDate}</div>
+                                            </>
+                                          )}
                                         </div>
                                       </div>
                                     )}
                                   </div>
+
+                                  {/* Addons */}
+                                  {addons.length > 0 && (
+                                    <div>
+                                      <h3 className="font-semibold text-gray-900 mb-3 text-base">Addons ({addons.length})</h3>
+                                      <div className="space-y-2">
+                                        {addons.map((addon, index) => (
+                                          <div key={index} className="bg-white rounded-lg border border-gray-200 p-3">
+                                            <div className="flex justify-between items-start">
+                                              <div>
+                                                <div className="font-medium text-gray-900">{addon.name}</div>
+                                                <div className="text-sm text-gray-600 mt-1">
+                                                  {formatCurrency(addon.price)} × {addon.qty}
+                                                </div>
+                                              </div>
+                                              <div className="font-medium text-gray-900">
+                                                {formatCurrency(addon.price * addon.qty)}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Sessions */}
+                                  {sessions.length > 0 && (
+                                    <div>
+                                      <h3 className="font-semibold text-gray-900 mb-3 text-base">Sessions ({sessions.length})</h3>
+                                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                        {sessions.map((session, index) => (
+                                          <div key={index} className="bg-white rounded-lg border border-gray-200 p-3 text-center">
+                                            <div className="text-sm font-medium text-gray-900">Session {index + 1}</div>
+                                            <div className="text-xs text-gray-600 mt-1">{session}</div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="text-sm text-gray-600">
-                Showing {((currentPage - 1) * ORDERS_PER_PAGE) + 1} to {Math.min(currentPage * ORDERS_PER_PAGE, filteredOrders.length)} of {filteredOrders.length} orders
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className={`p-2 rounded-lg border transition-colors ${
-                    currentPage === 1
-                      ? 'border-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                    let pageNumber: number;
-                    
-                    if (totalPages <= 5) {
-                      pageNumber = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNumber = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNumber = totalPages - 4 + i;
-                    } else {
-                      pageNumber = currentPage - 2 + i;
-                    }
-
-                    return (
-                      <button
-                        key={pageNumber}
-                        onClick={() => handlePageChange(pageNumber)}
-                        className={`min-w-[40px] h-10 px-3 rounded-lg border transition-colors ${
-                          currentPage === pageNumber
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        {pageNumber}
-                      </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
-                  })}
-                </div>
-
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className={`p-2 rounded-lg border transition-colors ${
-                    currentPage === totalPages
-                      ? 'border-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Go to page:</span>
-                <input
-                  type="number"
-                  min="1"
-                  max={totalPages}
-                  value={currentPage}
-                  onChange={(e) => {
-                    const page = parseInt(e.target.value);
-                    if (page >= 1 && page <= totalPages) {
-                      handlePageChange(page);
-                    }
-                  }}
-                  className="w-16 px-2 py-1 text-sm border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-          )}
-        </>
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );

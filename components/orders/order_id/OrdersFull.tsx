@@ -207,6 +207,7 @@ const OrdersFull = () => {
         
         if (mounted) {
           setOrders(allOrders);
+          setPreviousOrderIds(new Set(allOrders.map(o => o.order_id)));
           setTotalOrders(allOrders.length);
           setLoading(false);
         }
@@ -739,7 +740,7 @@ const OrdersFull = () => {
 
                 <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                    let pageNumber;
+                    let pageNumber: number;
                     
                     if (totalPages <= 5) {
                       pageNumber = i + 1;
